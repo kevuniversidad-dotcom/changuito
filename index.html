@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Changuito Coto</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 12px; background: #f4f5f7; color: #1c1e21; }
+    #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .card { background: white; padding: 14px; border-radius: 12px; margin-top: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .status-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; }
+    .verde { background: #e6f7ec; color: #00873a; }
+    .rojo { background: #fde8e8; color: #e02424; }
+    .btn-add { width: 100%; background: #00873a; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+    .resumen { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
+    .total-final { font-size: 18px; font-weight: bold; color: #111; border-top: 1px dashed #ccc; padding-top: 8px; margin-top: 8px; }
+    .item-fila { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #f0f0f0; }
+    .btn-borrar { background: #ff4d4f; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 11px; margin-left: 8px; cursor: pointer; }
+    select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <!-- Selector de Promoción Activa -->
+  <div class="card" style="margin-top: 0;">
+    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">PROMOCIÓN DEL DÍA:</label>
+    <select id="select-promo" onchange="cambiarPromo()">
+      <option value="0.30">Jueves: 30% Visa Débito NFC</option>
+      <option value="0.20">Finde: 20% Mercado Pago</option>
+      <option value="0.25">Viernes: 25% Mercado Pago</option>
+      <option value="0.00">Sin Promoción (Precio Góndola)</option>
+    </select>
+  </div>
+
+  <!-- Visor de Escaneo con Cámara -->
+  <div id="reader"></div>
+
+  <!-- Tarjeta de Producto Detectado -->
+  <div class="card" id="scan-result" style="display: none;">
+    <span id="badge" class="status-badge"></span>
+    <h3 id="prod-nombre" style="margin: 8px 0 4px 0; font-size: 16px;"></h3>
+    <div style="font-size: 13px; color: #666;">Precio Lista: <b id="prod-precio-orig"></b></div>
+    <div style="font-size: 15px; color: #111; margin-top: 2px;">A pagar: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
+    <button class="btn-add" id="btn-agregar">Agregar al Changuito</button>
+  </div>
+
+  <!-- Carrito Acumulado -->
+  <div class="card">
+    <h3 style="margin-top: 0; font-size: 16px;">Mi Changuito</h3>
+    <div class="resumen"><span>Subtotal Góndola:</span><span id="subtotal-gondola">$0,00</span></div>
+    <div class="resumen" style="color: #00873a;"><span>Ahorro total:</span><span id="total-ahorro">-$0,00</span></div>
+    <div class="resumen total-final"><span>Total a pagar:</span><span id="total-pagar">$0,00</span></div>
+    
+    <div id="lista-changuito" style="margin-top: 12px;">
+      <small style="color: #999;">Aún no agregaste productos.</small>
+    </div>
+  </div>
+
+  <script>
+    let dbProductos = {};
+    let changuito = [];
+    let ultimoEscaneado = null;
+    let DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
+
+    // Carga de catálogo scrapeado
+    fetch('productos.json')
+      .then(r => r.json())
+      .then(data => {
+        data.forEach(item => {
+          if (item.codigo && item.codigo !== "S/C") {
+            dbProductos[item.codigo] = item;
+          }
+        });
+        console.log("Catálogo listo en memoria.");
+      })
+      .catch(err => console.error("Error al cargar productos.json:", err));
+
+    function cambiarPromo() {
+      DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
+      actualizarTotales();
+    }
+
+    // Exclusiones de promociones de Coto
+    function evaluarExclusion(nombre) {
+      const vetados = [
+        "coca-cola", "sprite", "fanta", "aquarius", "schweppes", "monster", "cepita", "ades",
+        "catena", "rutini", "chandon", "luigi bosca", "trumpeter", "bianchi", "enemigo",
+        "harina", "azucar", "aceite"
+      ];
+      const nom = nombre.toLowerCase();
+      return vetados.some(v => nom.includes(v));
+    }
+
+    function onScanSuccess(decodedText) {
+      let prod = dbProductos[decodedText];
+
+      if (!prod) {
+        prod = { codigo: decodedText, nombre: "Artículo (" + decodedText + ")", precio: 0.0 };
+      }
+
+      const esExcluido = evaluarExclusion(prod.nombre);
+      const precioFinal = esExcluido ? prod.precio : prod.precio * (1 - DESCUENTO_ACTUAL);
+
+      ultimoEscaneado = {
+        codigo: prod.codigo,
+        nombre: prod.nombre,
+        precioLista: prod.precio,
+        precioFinal: precioFinal,
+        aplicaPromo: !esExcluido
+      };
+
+      document.getElementById('scan-result').style.display = 'block';
+      document.getElementById('prod-nombre').innerText = ultimoEscaneado.nombre;
+      document.getElementById('prod-precio-orig').innerText = `$${ultimoEscaneado.precioLista.toFixed(2)}`;
+      document.getElementById('prod-precio-promo').innerText = `$${ultimoEscaneado.precioFinal.toFixed(2)}`;
+      
+      const badge = document.getElementById('badge');
+      if (ultimoEscaneado.aplicaPromo && DESCUENTO_ACTUAL > 0) {
+        badge.className = 'status-badge verde';
+        badge.innerText = `APLICA ${(DESCUENTO_ACTUAL * 100).toFixed(0)}% OFF`;
+      } else {
+        badge.className = 'status-badge rojo';
+        badge.innerText = 'SIN PROMO / EXCLUIDO';
+      }
+    }
+
+    document.getElementById('btn-agregar').addEventListener('click', () => {
+      if (ultimoEscaneado) {
+        changuito.push({...ultimoEscaneado});
+        actualizarTotales();
+        document.getElementById('scan-result').style.display = 'none';
+        ultimoEscaneado = null;
+      }
+    });
+
+    function borrarItem(index) {
+      changuito.splice(index, 1);
+      actualizarTotales();
+    }
+
+    function actualizarTotales() {
+      let subtotal = 0;
+      let pagar = 0;
+
+      changuito.forEach(item => {
+        subtotal += item.precioLista;
+        const finalItem = item.aplicaPromo ? item.precioLista * (1 - DESCUENTO_ACTUAL) : item.precioLista;
+        pagar += finalItem;
+      });
+
+      let ahorro = subtotal - pagar;
+
+      document.getElementById('subtotal-gondola').innerText = `$${subtotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('total-ahorro').innerText = `-$${ahorro.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('total-pagar').innerText = `$${pagar.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+
+      const lista = document.getElementById('lista-changuito');
+      if (changuito.length === 0) {
+        lista.innerHTML = '<small style="color: #999;">Aún no agregaste productos.</small>';
+        return;
+      }
+
+      lista.innerHTML = changuito.map((i, idx) => `
+        <div class="item-fila">
+          <div style="flex: 1;">
+            <div>${i.nombre}</div>
+            <small style="color: ${i.aplicaPromo ? '#00873a' : '#666'}">${i.aplicaPromo ? 'Con promo' : 'Sin promo'}</small>
+          </div>
+          <b style="margin: 0 8px;">$${(i.aplicaPromo ? i.precioLista * (1 - DESCUENTO_ACTUAL) : i.precioLista).toFixed(2)}</b>
+          <button class="btn-borrar" onclick="borrarItem(${idx})">X</button>
+        </div>
+      `).join('');
+    }
+
+    // Inicializar escáner de cámara trasera
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 140 } },
+      onScanSuccess
+    ).catch(err => console.error("Error al iniciar cámara:", err));
+  </script>
+</body>
+</html>
