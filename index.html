@@ -19,12 +19,13 @@
     .btn-borrar { background: #ff4d4f; color: white; border: none; border-radius: 4px; padding: 3px 8px; font-size: 12px; margin-left: 8px; cursor: pointer; }
     select, input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; }
     .manual-box { background: #fffbe6; border: 1px solid #ffe58f; padding: 12px; border-radius: 8px; margin-top: 10px; }
-    .btn-search { background: #1890ff; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 8px; }
+    .resultados-busqueda { max-height: 180px; overflow-y: auto; margin-top: 8px; border: 1px solid #ddd; border-radius: 6px; background: #fff; }
+    .opcion-prod { padding: 8px 10px; font-size: 13px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; }
+    .opcion-prod:hover { background: #f0f7ff; }
   </style>
 </head>
 <body>
 
-  <!-- Selector de Promoción Activa -->
   <div class="card" style="margin-top: 0;">
     <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">BENEFICIO BANCARIO:</label>
     <select id="select-promo" onchange="cambiarPromo()">
@@ -35,30 +36,25 @@
     </select>
   </div>
 
-  <!-- Visor de Escaneo con Cámara -->
   <div id="reader"></div>
 
-  <!-- Tarjeta de Producto Detectado -->
   <div class="card" id="scan-result" style="display: none;">
     <span id="badge" class="status-badge"></span>
     <h3 id="prod-nombre" style="margin: 8px 0 4px 0; font-size: 16px;"></h3>
     <div style="font-size: 13px; color: #666;">Precio Góndola: <b id="prod-precio-orig"></b></div>
     <div style="font-size: 15px; color: #111; margin-top: 2px;">Total con promo: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
     
-    <!-- Vinculación manual rápida para códigos nuevos con buscador dinámico -->
     <div id="manual-fallback" class="manual-box" style="display: none;">
       <small style="color: #873800; font-weight: bold; display: block; margin-bottom: 6px;">
-        Código no cruzado con la web. Escribí el nombre para asociar su precio:
+        Código no indexado. Buscá el producto por nombre:
       </small>
-      <input type="text" id="input-busqueda" placeholder="Ej: pure arcor, fernet blanca..." list="sugerencias-coto">
-      <datalist id="sugerencias-coto"></datalist>
-      <button class="btn-search" onclick="vincularYGuardar()">Asociar Producto al Código</button>
+      <input type="text" id="input-busqueda" placeholder="Escribí ej: pure, tomate, arcor..." oninput="filtrarProductos()">
+      <div id="lista-resultados" class="resultados-busqueda" style="display: none;"></div>
     </div>
 
     <button class="btn-add" id="btn-agregar">Agregar al Changuito</button>
   </div>
 
-  <!-- Carrito Acumulado -->
   <div class="card">
     <h3 style="margin-top: 0; font-size: 16px;">Mi Changuito</h3>
     <div class="resumen"><span>Subtotal Góndola:</span><span id="subtotal-gondola">$0,00</span></div>
@@ -77,39 +73,14 @@
     let ultimoEscaneado = null;
     let DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
 
-    // Carga de catálogo completa en memoria RAM
+    // Cargar catálogo descargado
     fetch('productos.json')
       .then(r => r.json())
       .then(data => {
         catalogo = data;
-        console.log(`Catálogo listo: ${catalogo.length} artículos en memoria.`);
+        console.log(`Catálogo cargado: ${catalogo.length} artículos.`);
       })
-      .catch(err => console.error("Error cargando productos.json:", err));
-
-    // Renderizado bajo demanda para no saturar el DOM con más de 10.000 items
-    document.getElementById('input-busqueda').addEventListener('input', function(e) {
-      const query = e.target.value.trim().toLowerCase();
-      const datalist = document.getElementById('sugerencias-coto');
-      datalist.innerHTML = '';
-
-      if (query.length < 2) return;
-
-      const palabras = query.split(' ').filter(p => p.length > 0);
-      let matches = 0;
-
-      for (let i = 0; i < catalogo.length; i++) {
-        const item = catalogo[i];
-        const nom = item.nombre.toLowerCase();
-        
-        if (palabras.every(p => nom.includes(p))) {
-          const opt = document.createElement('option');
-          opt.value = `${item.nombre} | $${item.precio}`;
-          datalist.appendChild(opt);
-          matches++;
-          if (matches >= 30) break; // Máximo 30 opciones simultáneas en pantalla
-        }
-      }
-    });
+      .catch(err => console.error("Error al cargar productos.json:", err));
 
     function cambiarPromo() {
       DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
@@ -148,7 +119,7 @@
     }
 
     function onScanSuccess(codigoLeido) {
-      // 1. Revisar memoria persistente local
+      // 1. Memoria previa guardada en el dispositivo
       if (mapaMemoria[codigoLeido]) {
         const p = mapaMemoria[codigoLeido];
         document.getElementById('manual-fallback').style.display = 'none';
@@ -156,42 +127,73 @@
         return;
       }
 
-      // 2. Buscar en el catálogo por EAN-13 o código interno
-      const encontrado = catalogo.find(p => (p.ean && p.ean === codigoLeido) || p.codigo === codigoLeido);
+      // 2. Descomponer códigos de balanza / marcas internas (ej: 2800004617314 -> 46173 o 0046173)
+      let candidatos = [codigoLeido];
+      if (codigoLeido.startsWith('28') || codigoLeido.startsWith('20')) {
+        const digitosInternos = codigoLeido.substring(2, 9);
+        const digitosSinCeros = String(parseInt(digitosInternos, 10));
+        candidatos.push(digitosInternos, digitosSinCeros);
+      }
+
+      let encontrado = catalogo.find(p => 
+        candidatos.includes(p.codigo) || 
+        (p.ean && candidatos.includes(p.ean)) ||
+        (p.codigo && p.codigo.length > 3 && codigoLeido.includes(p.codigo))
+      );
+
       if (encontrado) {
         document.getElementById('manual-fallback').style.display = 'none';
         mostrarProducto(encontrado.nombre, encontrado.precio, encontrado.excluido, codigoLeido);
       } else {
-        // Fallback visual si el código no coincide directamente
         document.getElementById('manual-fallback').style.display = 'block';
         document.getElementById('input-busqueda').value = '';
+        document.getElementById('lista-resultados').style.display = 'none';
         mostrarProducto("Código: " + codigoLeido, 0.0, true, codigoLeido);
       }
     }
 
-    function vincularYGuardar() {
-      const input = document.getElementById('input-busqueda').value.split('|')[0].trim().toLowerCase();
-      if (!input) return;
-
-      const palabras = input.split(' ').filter(p => p.length > 0);
-      const encontrado = catalogo.find(item => {
-        const nom = item.nombre.toLowerCase();
-        return palabras.every(palabra => nom.includes(palabra));
-      });
-
-      if (encontrado) {
-        mapaMemoria[ultimoEscaneado.codigo] = {
-          nombre: encontrado.nombre,
-          precio: encontrado.precio,
-          excluido: encontrado.excluido
-        };
-        localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
-
-        mostrarProducto(encontrado.nombre, encontrado.precio, encontrado.excluido, ultimoEscaneado.codigo);
-        document.getElementById('manual-fallback').style.display = 'none';
-      } else {
-        alert("No se encontró ningún artículo que coincida con: " + input);
+    // Buscador interactivo en vivo sobre todos los productos
+    function filtrarProductos() {
+      const txt = document.getElementById('input-busqueda').value.trim().toLowerCase();
+      const contenedor = document.getElementById('lista-resultados');
+      
+      if (txt.length < 2) {
+        contenedor.style.display = 'none';
+        return;
       }
+
+      const palabras = txt.split(' ').filter(p => p.length > 0);
+      const matches = catalogo.filter(item => {
+        const nom = item.nombre.toLowerCase();
+        return palabras.every(pal => nom.includes(pal));
+      }).slice(0, 15);
+
+      if (matches.length === 0) {
+        contenedor.innerHTML = '<div style="padding:8px; font-size:12px; color:#888;">No hay coincidencias.</div>';
+        contenedor.style.display = 'block';
+        return;
+      }
+
+      contenedor.innerHTML = matches.map((item, idx) => `
+        <div class="opcion-prod" onclick="seleccionarProducto(${catalogo.indexOf(item)})">
+          <span>${item.nombre}</span>
+          <b>$${item.precio.toFixed(2)}</b>
+        </div>
+      `).join('');
+      contenedor.style.display = 'block';
+    }
+
+    function seleccionarProducto(index) {
+      const p = catalogo[index];
+      mapaMemoria[ultimoEscaneado.codigo] = {
+        nombre: p.nombre,
+        precio: p.precio,
+        excluido: p.excluido
+      };
+      localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
+
+      mostrarProducto(p.nombre, p.precio, p.excluido, ultimoEscaneado.codigo);
+      document.getElementById('manual-fallback').style.display = 'none';
     }
 
     document.getElementById('btn-agregar').addEventListener('click', () => {
@@ -201,7 +203,7 @@
         document.getElementById('scan-result').style.display = 'none';
         ultimoEscaneado = null;
       } else {
-        alert("Vinculá el producto primero para asignarle su precio real.");
+        alert("Seleccioná el producto de la lista para fijar su precio antes de agregarlo.");
       }
     });
 
@@ -243,7 +245,6 @@
       `).join('');
     }
 
-    // Cámara trasera
     const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
       { facingMode: "environment" },
