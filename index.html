@@ -45,12 +45,12 @@
     <div style="font-size: 13px; color: #666;">Precio Góndola: <b id="prod-precio-orig"></b></div>
     <div style="font-size: 15px; color: #111; margin-top: 2px;">Total con promo: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
     
-    <!-- Vinculación manual rápida para códigos nuevos -->
+    <!-- Vinculación manual rápida para códigos nuevos con buscador dinámico -->
     <div id="manual-fallback" class="manual-box" style="display: none;">
       <small style="color: #873800; font-weight: bold; display: block; margin-bottom: 6px;">
         Código no cruzado con la web. Escribí el nombre para asociar su precio:
       </small>
-      <input type="text" id="input-busqueda" placeholder="Ej: pure arcor, fernet branca..." list="sugerencias-coto">
+      <input type="text" id="input-busqueda" placeholder="Ej: pure arcor, fernet blanca..." list="sugerencias-coto">
       <datalist id="sugerencias-coto"></datalist>
       <button class="btn-search" onclick="vincularYGuardar()">Asociar Producto al Código</button>
     </div>
@@ -77,21 +77,39 @@
     let ultimoEscaneado = null;
     let DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
 
-    // Carga de la base completa generada por Python
+    // Carga de catálogo completa en memoria RAM
     fetch('productos.json')
       .then(r => r.json())
       .then(data => {
         catalogo = data;
-        const datalist = document.getElementById('sugerencias-coto');
-        // Cargamos el datalist completo sin límite
-        data.forEach(item => {
+        console.log(`Catálogo listo: ${catalogo.length} artículos en memoria.`);
+      })
+      .catch(err => console.error("Error cargando productos.json:", err));
+
+    // Renderizado bajo demanda para no saturar el DOM con más de 10.000 items
+    document.getElementById('input-busqueda').addEventListener('input', function(e) {
+      const query = e.target.value.trim().toLowerCase();
+      const datalist = document.getElementById('sugerencias-coto');
+      datalist.innerHTML = '';
+
+      if (query.length < 2) return;
+
+      const palabras = query.split(' ').filter(p => p.length > 0);
+      let matches = 0;
+
+      for (let i = 0; i < catalogo.length; i++) {
+        const item = catalogo[i];
+        const nom = item.nombre.toLowerCase();
+        
+        if (palabras.every(p => nom.includes(p))) {
           const opt = document.createElement('option');
           opt.value = `${item.nombre} | $${item.precio}`;
           datalist.appendChild(opt);
-        });
-        console.log(`Catálogo completo listo: ${catalogo.length} artículos.`);
-      })
-      .catch(err => console.error("Error cargando productos.json:", err));
+          matches++;
+          if (matches >= 30) break; // Máximo 30 opciones simultáneas en pantalla
+        }
+      }
+    });
 
     function cambiarPromo() {
       DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
@@ -130,7 +148,7 @@
     }
 
     function onScanSuccess(codigoLeido) {
-      // 1. Revisar memoria persistente del navegador
+      // 1. Revisar memoria persistente local
       if (mapaMemoria[codigoLeido]) {
         const p = mapaMemoria[codigoLeido];
         document.getElementById('manual-fallback').style.display = 'none';
@@ -138,13 +156,13 @@
         return;
       }
 
-      // 2. Buscar por EAN-13 directo extraído de Coto o código interno
+      // 2. Buscar en el catálogo por EAN-13 o código interno
       const encontrado = catalogo.find(p => (p.ean && p.ean === codigoLeido) || p.codigo === codigoLeido);
       if (encontrado) {
         document.getElementById('manual-fallback').style.display = 'none';
         mostrarProducto(encontrado.nombre, encontrado.precio, encontrado.excluido, codigoLeido);
       } else {
-        // Fallback visual si el código físico no estaba vinculado
+        // Fallback visual si el código no coincide directamente
         document.getElementById('manual-fallback').style.display = 'block';
         document.getElementById('input-busqueda').value = '';
         mostrarProducto("Código: " + codigoLeido, 0.0, true, codigoLeido);
@@ -155,7 +173,6 @@
       const input = document.getElementById('input-busqueda').value.split('|')[0].trim().toLowerCase();
       if (!input) return;
 
-      // Coincidencia flexible por todas las palabras ingresadas
       const palabras = input.split(' ').filter(p => p.length > 0);
       const encontrado = catalogo.find(item => {
         const nom = item.nombre.toLowerCase();
@@ -184,7 +201,7 @@
         document.getElementById('scan-result').style.display = 'none';
         ultimoEscaneado = null;
       } else {
-        alert("Vinculá el producto primero para que tenga su precio real.");
+        alert("Vinculá el producto primero para asignarle su precio real.");
       }
     });
 
@@ -226,7 +243,7 @@
       `).join('');
     }
 
-    // Encendido de la cámara trasera
+    // Cámara trasera
     const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
       { facingMode: "environment" },
