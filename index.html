@@ -45,14 +45,14 @@
     <div style="font-size: 13px; color: #666;">Precio Góndola: <b id="prod-precio-orig"></b></div>
     <div style="font-size: 15px; color: #111; margin-top: 2px;">Total con promo: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
     
-    <!-- Enlace manual con auto-guardado si es código de barras nuevo -->
+    <!-- Vinculación manual rápida para códigos nuevos -->
     <div id="manual-fallback" class="manual-box" style="display: none;">
       <small style="color: #873800; font-weight: bold; display: block; margin-bottom: 6px;">
-        Código nuevo no indexado. Buscalo por nombre para fijar su precio:
+        Código no cruzado con la web. Escribí el nombre para asociar su precio:
       </small>
-      <input type="text" id="input-busqueda" placeholder="Ej: pure arcor, fernet..." list="sugerencias-coto">
+      <input type="text" id="input-busqueda" placeholder="Ej: pure arcor, fernet branca..." list="sugerencias-coto">
       <datalist id="sugerencias-coto"></datalist>
-      <button class="btn-search" onclick="vincularYGuardar()">Vincular y Recordar Código</button>
+      <button class="btn-search" onclick="vincularYGuardar()">Asociar Producto al Código</button>
     </div>
 
     <button class="btn-add" id="btn-agregar">Agregar al Changuito</button>
@@ -77,18 +77,19 @@
     let ultimoEscaneado = null;
     let DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
 
-    // Cargar base de datos generada por Python
+    // Carga de la base completa generada por Python
     fetch('productos.json')
       .then(r => r.json())
       .then(data => {
         catalogo = data;
         const datalist = document.getElementById('sugerencias-coto');
-        data.slice(0, 1500).forEach(item => {
+        // Cargamos el datalist completo sin límite
+        data.forEach(item => {
           const opt = document.createElement('option');
           opt.value = `${item.nombre} | $${item.precio}`;
           datalist.appendChild(opt);
         });
-        console.log("Catálogo listo con " + catalogo.length + " artículos.");
+        console.log(`Catálogo completo listo: ${catalogo.length} artículos.`);
       })
       .catch(err => console.error("Error cargando productos.json:", err));
 
@@ -129,7 +130,7 @@
     }
 
     function onScanSuccess(codigoLeido) {
-      // 1. Revisar si ya lo habíamos memorizado en el teléfono
+      // 1. Revisar memoria persistente del navegador
       if (mapaMemoria[codigoLeido]) {
         const p = mapaMemoria[codigoLeido];
         document.getElementById('manual-fallback').style.display = 'none';
@@ -137,14 +138,15 @@
         return;
       }
 
-      // 2. Buscar en catálogo general por código interno
-      const encontrado = catalogo.find(p => p.codigo === codigoLeido);
+      // 2. Buscar por EAN-13 directo extraído de Coto o código interno
+      const encontrado = catalogo.find(p => (p.ean && p.ean === codigoLeido) || p.codigo === codigoLeido);
       if (encontrado) {
         document.getElementById('manual-fallback').style.display = 'none';
         mostrarProducto(encontrado.nombre, encontrado.precio, encontrado.excluido, codigoLeido);
       } else {
-        // Código de barras físico nuevo: abrimos el selector por nombre
+        // Fallback visual si el código físico no estaba vinculado
         document.getElementById('manual-fallback').style.display = 'block';
+        document.getElementById('input-busqueda').value = '';
         mostrarProducto("Código: " + codigoLeido, 0.0, true, codigoLeido);
       }
     }
@@ -153,20 +155,25 @@
       const input = document.getElementById('input-busqueda').value.split('|')[0].trim().toLowerCase();
       if (!input) return;
 
-      const p = catalogo.find(item => item.nombre.toLowerCase().includes(input));
-      if (p) {
-        // Guardar en la memoria local del celular para que no pida vincularlo nunca más
+      // Coincidencia flexible por todas las palabras ingresadas
+      const palabras = input.split(' ').filter(p => p.length > 0);
+      const encontrado = catalogo.find(item => {
+        const nom = item.nombre.toLowerCase();
+        return palabras.every(palabra => nom.includes(palabra));
+      });
+
+      if (encontrado) {
         mapaMemoria[ultimoEscaneado.codigo] = {
-          nombre: p.nombre,
-          precio: p.precio,
-          excluido: p.excluido
+          nombre: encontrado.nombre,
+          precio: encontrado.precio,
+          excluido: encontrado.excluido
         };
         localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
 
-        mostrarProducto(p.nombre, p.precio, p.excluido, ultimoEscaneado.codigo);
+        mostrarProducto(encontrado.nombre, encontrado.precio, encontrado.excluido, ultimoEscaneado.codigo);
         document.getElementById('manual-fallback').style.display = 'none';
       } else {
-        alert("No se encontró ese producto en la lista descargada.");
+        alert("No se encontró ningún artículo que coincida con: " + input);
       }
     }
 
@@ -219,13 +226,13 @@
       `).join('');
     }
 
-    // Activar lector
+    // Encendido de la cámara trasera
     const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 250, height: 140 } },
       onScanSuccess
-    ).catch(err => console.error("Error de cámara:", err));
+    ).catch(err => console.error("Error al iniciar cámara:", err));
   </script>
 </body>
 </html>
