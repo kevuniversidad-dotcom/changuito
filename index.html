@@ -28,10 +28,6 @@
     .verde-badge { background: #e6f7ec; color: var(--verde); border: 1px solid #a3e6b9; }
     .rojo-badge { background: #fde8e8; color: var(--rojo); border: 1px solid #f8b4b4; }
 
-    .tope-box { margin-top: 8px; font-size: 12px; color: #555; }
-    .progress-bar-bg { width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-top: 4px; }
-    .progress-bar-fill { height: 100%; background: var(--verde); width: 0%; transition: width 0.3s ease; }
-
     .item-fila { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 13px; }
     .item-info { flex: 1; margin-right: 8px; }
     .item-controles { display: flex; align-items: center; gap: 6px; }
@@ -55,34 +51,24 @@
     <span class="firma-kevin">Una creación de Kevin</span>
   </div>
 
-  <!-- Selector de Beneficio -->
+  <!-- Selector de Beneficio Bancario (Sin Topes) -->
   <div class="card" style="margin-top: 0;">
-    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">PROMO DEL DÍA Y TOPE DE REINTEGRO:</label>
+    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">PROMO DEL DÍA (DESCUENTOS SIN TOPE):</label>
     <select id="select-promo" onchange="cambiarPromo()">
-      <option value="0.30" data-tope="15000">Jueves: 30% Visa Débito NFC</option>
-      <option value="0.20" data-tope="10000">Finde: 20% Mercado Pago</option>
-      <option value="0.25" data-tope="12000">Viernes: 25% Mercado Pago</option>
-      <option value="0.00" data-tope="0">Sin Promo (Precio Góndola)</option>
+      <option value="0.30">Jueves: 30% Visa Débito NFC (Sin tope)</option>
+      <option value="0.20">Finde: 20% Mercado Pago (Sin tope)</option>
+      <option value="0.25">Viernes: 25% Mercado Pago (Sin tope)</option>
+      <option value="0.00">Sin Promo (Precio Góndola)</option>
     </select>
-
-    <div class="tope-box" id="caja-tope">
-      <div style="display: flex; justify-content: space-between;">
-        <span>Ahorro aplicado: <b id="ahorro-acumulado">$0</b></span>
-        <span>Tope: <b id="tope-maximo">$15.000</b></span>
-      </div>
-      <div class="progress-bar-bg">
-        <div id="tope-barra" class="progress-bar-fill"></div>
-      </div>
-    </div>
   </div>
 
-  <!-- Escáner -->
+  <!-- Escáner de Cámara con Flash -->
   <div style="position: relative; margin-top: 12px;">
     <div id="reader"></div>
     <button class="btn-torch" id="btn-flash" onclick="toggleFlash()">🔦</button>
   </div>
 
-  <!-- Búsqueda manual por EAN numérico -->
+  <!-- Buscador Manual por Código EAN -->
   <div class="card" style="padding: 10px 14px;">
     <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 6px;">BUSCADOR POR EAN DIRECTO (13 DÍGITOS):</label>
     <div style="display: flex; gap: 8px;">
@@ -91,7 +77,7 @@
     </div>
   </div>
 
-  <!-- Producto Detectado -->
+  <!-- Detalle del Producto Detectado -->
   <div class="card" id="scan-result" style="display: none;">
     <span id="badge" class="status-badge"></span>
     <h3 id="prod-nombre" style="margin: 8px 0 4px 0; font-size: 16px;"></h3>
@@ -109,7 +95,7 @@
     <button class="btn-add" id="btn-agregar">Agregar al Changuito</button>
   </div>
 
-  <!-- Changuito -->
+  <!-- Resumen del Changuito -->
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <h3 style="margin: 0; font-size: 16px;">Mi Changuito</h3>
@@ -209,7 +195,6 @@
     }
 
     async function procesarCodigo(codigoLeido) {
-      // 1. Memoria local
       if (mapaMemoria[codigoLeido]) {
         const p = mapaMemoria[codigoLeido];
         document.getElementById('manual-fallback').style.display = 'none';
@@ -217,7 +202,6 @@
         return;
       }
 
-      // 2. Coincidencia directa en base de Coto
       let p = catalogo.find(item => item.codigo === codigoLeido || (item.ean && item.ean === codigoLeido));
       if (p) {
         document.getElementById('manual-fallback').style.display = 'none';
@@ -225,7 +209,6 @@
         return;
       }
 
-      // 3. Consulta automática a la API pública de códigos EAN
       document.getElementById('manual-fallback').style.display = 'none';
       mostrarProducto("Buscando código " + codigoLeido + "...", 0.0, true, codigoLeido);
 
@@ -238,7 +221,6 @@
           const marcaDetectada = info.product.brands || "";
           const terminoBusqueda = `${nombreDetectado} ${marcaDetectada}`.trim();
 
-          // Buscar en el catálogo de Coto por las palabras de la API
           const palabras = normalizar(terminoBusqueda).split(/\s+/).filter(w => w.length > 2);
           let matchCoto = catalogo.find(item => {
             const nom = normalizar(item.nombre);
@@ -260,7 +242,6 @@
         console.warn("Fallo consulta API EAN:", e);
       }
 
-      // 4. Fallback manual si no está en la API
       document.getElementById('manual-fallback').style.display = 'block';
       document.getElementById('input-busqueda').value = '';
       document.getElementById('lista-resultados').style.display = 'none';
@@ -349,36 +330,22 @@
     function actualizarTotales() {
       const select = document.getElementById('select-promo');
       const descPorc = parseFloat(select.value);
-      const topeMax = parseFloat(select.selectedOptions[0].dataset.tope || 0);
 
       let subtotalGondola = 0;
-      let ahorroTeorico = 0;
+      let ahorroTotal = 0;
 
       changuito.forEach(item => {
         const itemTotal = item.precioLista * item.cantidad;
         subtotalGondola += itemTotal;
         if (item.aplicaPromo && descPorc > 0) {
-          ahorroTeorico += itemTotal * descPorc;
+          ahorroTotal += itemTotal * descPorc;
         }
       });
 
-      const ahorroReal = topeMax > 0 ? Math.min(ahorroTeorico, topeMax) : ahorroTeorico;
-      const totalPagar = subtotalGondola - ahorroReal;
-
-      if (topeMax > 0) {
-        document.getElementById('caja-tope').style.display = 'block';
-        document.getElementById('ahorro-acumulado').innerText = `$${ahorroReal.toLocaleString('es-AR', {minimumFractionDigits: 0})}`;
-        document.getElementById('tope-maximo').innerText = `$${topeMax.toLocaleString('es-AR', {minimumFractionDigits: 0})}`;
-        const pct = Math.min((ahorroReal / topeMax) * 100, 100);
-        const barra = document.getElementById('tope-barra');
-        barra.style.width = pct + '%';
-        barra.style.background = pct >= 100 ? 'var(--rojo)' : 'var(--verde)';
-      } else {
-        document.getElementById('caja-tope').style.display = 'none';
-      }
+      const totalPagar = subtotalGondola - ahorroTotal;
 
       document.getElementById('subtotal-gondola').innerText = `$${subtotalGondola.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
-      document.getElementById('total-ahorro').innerText = `-$${ahorroReal.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('total-ahorro').innerText = `-$${ahorroTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
       document.getElementById('total-pagar').innerText = `$${totalPagar.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
 
       const contenedor = document.getElementById('lista-changuito');
