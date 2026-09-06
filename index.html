@@ -9,27 +9,29 @@
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 12px; background: #f4f5f7; color: #1c1e21; }
     #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .card { background: white; padding: 14px; border-radius: 12px; margin-top: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .status-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; }
-    .verde { background: #e6f7ec; color: #00873a; }
-    .rojo { background: #fde8e8; color: #e02424; }
+    .status-badge { display: inline-block; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; text-transform: uppercase; }
+    .verde { background: #e6f7ec; color: #00873a; border: 1px solid #a3e6b9; }
+    .rojo { background: #fde8e8; color: #e02424; border: 1px solid #f8b4b4; }
     .btn-add { width: 100%; background: #00873a; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 10px; cursor: pointer; }
     .resumen { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
     .total-final { font-size: 18px; font-weight: bold; color: #111; border-top: 1px dashed #ccc; padding-top: 8px; margin-top: 8px; }
     .item-fila { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #f0f0f0; }
-    .btn-borrar { background: #ff4d4f; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 11px; margin-left: 8px; cursor: pointer; }
-    select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; font-weight: bold; }
+    .btn-borrar { background: #ff4d4f; color: white; border: none; border-radius: 4px; padding: 3px 8px; font-size: 12px; margin-left: 8px; cursor: pointer; }
+    select, input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; }
+    .manual-box { background: #fffbe6; border: 1px solid #ffe58f; padding: 12px; border-radius: 8px; margin-top: 10px; }
+    .btn-search { background: #1890ff; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 8px; }
   </style>
 </head>
 <body>
 
   <!-- Selector de Promoción Activa -->
   <div class="card" style="margin-top: 0;">
-    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">PROMOCIÓN DEL DÍA:</label>
+    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">BENEFICIO BANCARIO:</label>
     <select id="select-promo" onchange="cambiarPromo()">
       <option value="0.30">Jueves: 30% Visa Débito NFC</option>
       <option value="0.20">Finde: 20% Mercado Pago</option>
       <option value="0.25">Viernes: 25% Mercado Pago</option>
-      <option value="0.00">Sin Promoción (Precio Góndola)</option>
+      <option value="0.00">Sin Descuento (Precio Lista)</option>
     </select>
   </div>
 
@@ -40,8 +42,19 @@
   <div class="card" id="scan-result" style="display: none;">
     <span id="badge" class="status-badge"></span>
     <h3 id="prod-nombre" style="margin: 8px 0 4px 0; font-size: 16px;"></h3>
-    <div style="font-size: 13px; color: #666;">Precio Lista: <b id="prod-precio-orig"></b></div>
-    <div style="font-size: 15px; color: #111; margin-top: 2px;">A pagar: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
+    <div style="font-size: 13px; color: #666;">Precio Góndola: <b id="prod-precio-orig"></b></div>
+    <div style="font-size: 15px; color: #111; margin-top: 2px;">Total con promo: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
+    
+    <!-- Enlace manual con auto-guardado si es código de barras nuevo -->
+    <div id="manual-fallback" class="manual-box" style="display: none;">
+      <small style="color: #873800; font-weight: bold; display: block; margin-bottom: 6px;">
+        Código nuevo no indexado. Buscalo por nombre para fijar su precio:
+      </small>
+      <input type="text" id="input-busqueda" placeholder="Ej: pure arcor, fernet..." list="sugerencias-coto">
+      <datalist id="sugerencias-coto"></datalist>
+      <button class="btn-search" onclick="vincularYGuardar()">Vincular y Recordar Código</button>
+    </div>
+
     <button class="btn-add" id="btn-agregar">Agregar al Changuito</button>
   </div>
 
@@ -58,79 +71,113 @@
   </div>
 
   <script>
-    let dbProductos = {};
+    let catalogo = [];
+    let mapaMemoria = JSON.parse(localStorage.getItem('changuito_ean_map') || '{}');
     let changuito = [];
     let ultimoEscaneado = null;
     let DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
 
-    // Carga de catálogo scrapeado
+    // Cargar base de datos generada por Python
     fetch('productos.json')
       .then(r => r.json())
       .then(data => {
-        data.forEach(item => {
-          if (item.codigo && item.codigo !== "S/C") {
-            dbProductos[item.codigo] = item;
-          }
+        catalogo = data;
+        const datalist = document.getElementById('sugerencias-coto');
+        data.slice(0, 1500).forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = `${item.nombre} | $${item.precio}`;
+          datalist.appendChild(opt);
         });
-        console.log("Catálogo listo en memoria.");
+        console.log("Catálogo listo con " + catalogo.length + " artículos.");
       })
-      .catch(err => console.error("Error al cargar productos.json:", err));
+      .catch(err => console.error("Error cargando productos.json:", err));
 
     function cambiarPromo() {
       DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
       actualizarTotales();
-    }
-
-    // Exclusiones de promociones de Coto
-    function evaluarExclusion(nombre) {
-      const vetados = [
-        "coca-cola", "sprite", "fanta", "aquarius", "schweppes", "monster", "cepita", "ades",
-        "catena", "rutini", "chandon", "luigi bosca", "trumpeter", "bianchi", "enemigo",
-        "harina", "azucar", "aceite"
-      ];
-      const nom = nombre.toLowerCase();
-      return vetados.some(v => nom.includes(v));
-    }
-
-    function onScanSuccess(decodedText) {
-      let prod = dbProductos[decodedText];
-
-      if (!prod) {
-        prod = { codigo: decodedText, nombre: "Artículo (" + decodedText + ")", precio: 0.0 };
+      if (ultimoEscaneado) {
+        mostrarProducto(ultimoEscaneado.nombre, ultimoEscaneado.precioLista, ultimoEscaneado.excluido, ultimoEscaneado.codigo);
       }
+    }
 
-      const esExcluido = evaluarExclusion(prod.nombre);
-      const precioFinal = esExcluido ? prod.precio : prod.precio * (1 - DESCUENTO_ACTUAL);
+    function mostrarProducto(nombre, precio, esExcluido, codigo) {
+      const aplica = !esExcluido && DESCUENTO_ACTUAL > 0;
+      const precioFinal = aplica ? precio * (1 - DESCUENTO_ACTUAL) : precio;
 
       ultimoEscaneado = {
-        codigo: prod.codigo,
-        nombre: prod.nombre,
-        precioLista: prod.precio,
+        codigo: codigo,
+        nombre: nombre,
+        precioLista: precio,
         precioFinal: precioFinal,
-        aplicaPromo: !esExcluido
+        excluido: esExcluido,
+        aplicaPromo: aplica
       };
 
       document.getElementById('scan-result').style.display = 'block';
-      document.getElementById('prod-nombre').innerText = ultimoEscaneado.nombre;
-      document.getElementById('prod-precio-orig').innerText = `$${ultimoEscaneado.precioLista.toFixed(2)}`;
-      document.getElementById('prod-precio-promo').innerText = `$${ultimoEscaneado.precioFinal.toFixed(2)}`;
-      
+      document.getElementById('prod-nombre').innerText = nombre;
+      document.getElementById('prod-precio-orig').innerText = `$${precio.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('prod-precio-promo').innerText = `$${precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+
       const badge = document.getElementById('badge');
-      if (ultimoEscaneado.aplicaPromo && DESCUENTO_ACTUAL > 0) {
+      if (aplica) {
         badge.className = 'status-badge verde';
         badge.innerText = `APLICA ${(DESCUENTO_ACTUAL * 100).toFixed(0)}% OFF`;
       } else {
         badge.className = 'status-badge rojo';
-        badge.innerText = 'SIN PROMO / EXCLUIDO';
+        badge.innerText = 'EXCLUIDO DE LA PROMO';
+      }
+    }
+
+    function onScanSuccess(codigoLeido) {
+      // 1. Revisar si ya lo habíamos memorizado en el teléfono
+      if (mapaMemoria[codigoLeido]) {
+        const p = mapaMemoria[codigoLeido];
+        document.getElementById('manual-fallback').style.display = 'none';
+        mostrarProducto(p.nombre, p.precio, p.excluido, codigoLeido);
+        return;
+      }
+
+      // 2. Buscar en catálogo general por código interno
+      const encontrado = catalogo.find(p => p.codigo === codigoLeido);
+      if (encontrado) {
+        document.getElementById('manual-fallback').style.display = 'none';
+        mostrarProducto(encontrado.nombre, encontrado.precio, encontrado.excluido, codigoLeido);
+      } else {
+        // Código de barras físico nuevo: abrimos el selector por nombre
+        document.getElementById('manual-fallback').style.display = 'block';
+        mostrarProducto("Código: " + codigoLeido, 0.0, true, codigoLeido);
+      }
+    }
+
+    function vincularYGuardar() {
+      const input = document.getElementById('input-busqueda').value.split('|')[0].trim().toLowerCase();
+      if (!input) return;
+
+      const p = catalogo.find(item => item.nombre.toLowerCase().includes(input));
+      if (p) {
+        // Guardar en la memoria local del celular para que no pida vincularlo nunca más
+        mapaMemoria[ultimoEscaneado.codigo] = {
+          nombre: p.nombre,
+          precio: p.precio,
+          excluido: p.excluido
+        };
+        localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
+
+        mostrarProducto(p.nombre, p.precio, p.excluido, ultimoEscaneado.codigo);
+        document.getElementById('manual-fallback').style.display = 'none';
+      } else {
+        alert("No se encontró ese producto en la lista descargada.");
       }
     }
 
     document.getElementById('btn-agregar').addEventListener('click', () => {
-      if (ultimoEscaneado) {
+      if (ultimoEscaneado && ultimoEscaneado.precioLista > 0) {
         changuito.push({...ultimoEscaneado});
         actualizarTotales();
         document.getElementById('scan-result').style.display = 'none';
         ultimoEscaneado = null;
+      } else {
+        alert("Vinculá el producto primero para que tenga su precio real.");
       }
     });
 
@@ -145,8 +192,7 @@
 
       changuito.forEach(item => {
         subtotal += item.precioLista;
-        const finalItem = item.aplicaPromo ? item.precioLista * (1 - DESCUENTO_ACTUAL) : item.precioLista;
-        pagar += finalItem;
+        pagar += item.precioFinal;
       });
 
       let ahorro = subtotal - pagar;
@@ -165,21 +211,21 @@
         <div class="item-fila">
           <div style="flex: 1;">
             <div>${i.nombre}</div>
-            <small style="color: ${i.aplicaPromo ? '#00873a' : '#666'}">${i.aplicaPromo ? 'Con promo' : 'Sin promo'}</small>
+            <small style="color: ${i.aplicaPromo ? '#00873a' : '#e02424'}">${i.aplicaPromo ? 'Aplica promo' : 'Excluido'}</small>
           </div>
-          <b style="margin: 0 8px;">$${(i.aplicaPromo ? i.precioLista * (1 - DESCUENTO_ACTUAL) : i.precioLista).toFixed(2)}</b>
+          <b style="margin: 0 8px;">$${i.precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</b>
           <button class="btn-borrar" onclick="borrarItem(${idx})">X</button>
         </div>
       `).join('');
     }
 
-    // Inicializar escáner de cámara trasera
+    // Activar lector
     const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 250, height: 140 } },
       onScanSuccess
-    ).catch(err => console.error("Error al iniciar cámara:", err));
+    ).catch(err => console.error("Error de cámara:", err));
   </script>
 </body>
 </html>
