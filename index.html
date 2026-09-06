@@ -2,160 +2,119 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Changuito Coto</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    :root {
-      --verde: #00873a;
-      --rojo: #e02424;
-      --coto-rojo: #d32f2f;
-      --fondo: #f4f5f7;
-      --card: #ffffff;
-      --texto: #1c1e21;
-    }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 12px; background: var(--fondo); color: var(--texto); }
-    .card { background: var(--card); padding: 14px; border-radius: 12px; margin-top: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    
-    .header-coto { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 10px 6px; }
-    .coto-badge { background: var(--coto-rojo); color: white; font-size: 20px; font-weight: 900; letter-spacing: 2px; padding: 2px 8px; border-radius: 6px; }
-    .firma-kevin { font-size: 11px; font-weight: 600; color: #777; font-style: italic; }
-
-    #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; position: relative; }
-    .btn-torch { position: absolute; bottom: 10px; right: 10px; z-index: 10; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid rgba(255,255,255,0.4); border-radius: 50%; width: 42px; height: 42px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-
-    .status-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 11px; text-transform: uppercase; }
-    .verde-badge { background: #e6f7ec; color: var(--verde); border: 1px solid #a3e6b9; }
-    .rojo-badge { background: #fde8e8; color: var(--rojo); border: 1px solid #f8b4b4; }
-
-    .item-fila { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 13px; }
-    .item-info { flex: 1; margin-right: 8px; }
-    .item-controles { display: flex; align-items: center; gap: 6px; }
-    .btn-qty { background: #e5e7eb; border: none; border-radius: 4px; width: 26px; height: 26px; font-weight: bold; font-size: 14px; cursor: pointer; }
-    .btn-borrar { background: #fee2e2; color: var(--rojo); border: none; border-radius: 4px; width: 26px; height: 26px; font-weight: bold; cursor: pointer; }
-    .btn-add { width: 100%; background: var(--verde); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 10px; cursor: pointer; }
-    .btn-search { background: #1976d2; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 12px; background: #f4f5f7; color: #1c1e21; }
+    #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .card { background: white; padding: 14px; border-radius: 12px; margin-top: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .status-badge { display: inline-block; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; text-transform: uppercase; }
+    .verde { background: #e6f7ec; color: #00873a; border: 1px solid #a3e6b9; }
+    .rojo { background: #fde8e8; color: #e02424; border: 1px solid #f8b4b4; }
+    .amarillo { background: #fffbe6; color: #d48806; border: 1px solid #ffe58f; }
+    .btn-add { width: 100%; background: #00873a; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 10px; cursor: pointer; }
     .resumen { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
     .total-final { font-size: 18px; font-weight: bold; color: #111; border-top: 1px dashed #ccc; padding-top: 8px; margin-top: 8px; }
+    .item-fila { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #f0f0f0; }
+    .btn-borrar { background: #ff4d4f; color: white; border: none; border-radius: 4px; padding: 3px 8px; font-size: 12px; margin-left: 8px; cursor: pointer; }
     select, input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; }
     .manual-box { background: #fffbe6; border: 1px solid #ffe58f; padding: 12px; border-radius: 8px; margin-top: 10px; }
     .resultados-busqueda { max-height: 180px; overflow-y: auto; margin-top: 8px; border: 1px solid #ddd; border-radius: 6px; background: #fff; }
     .opcion-prod { padding: 8px 10px; font-size: 13px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; }
+    .opcion-prod:hover { background: #f0f7ff; }
   </style>
 </head>
 <body>
 
-  <!-- Encabezado -->
-  <div class="header-coto">
-    <span class="coto-badge">COTO</span>
-    <span class="firma-kevin">Una creación de Kevin</span>
-  </div>
-
-  <!-- Selector de Beneficio Bancario (Sin Topes) -->
+  <!-- Selector de Promoción Activa -->
   <div class="card" style="margin-top: 0;">
-    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">PROMO DEL DÍA (DESCUENTOS SIN TOPE):</label>
+    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">BENEFICIO BANCARIO:</label>
     <select id="select-promo" onchange="cambiarPromo()">
-      <option value="0.30">Jueves: 30% Visa Débito NFC (Sin tope)</option>
-      <option value="0.20">Finde: 20% Mercado Pago (Sin tope)</option>
-      <option value="0.25">Viernes: 25% Mercado Pago (Sin tope)</option>
-      <option value="0.00">Sin Promo (Precio Góndola)</option>
+      <option value="0.30">Jueves: 30% Visa Débito NFC</option>
+      <option value="0.20">Finde: 20% Mercado Pago</option>
+      <option value="0.25">Viernes: 25% Mercado Pago</option>
+      <option value="0.00">Sin Descuento (Precio Lista)</option>
     </select>
   </div>
 
-  <!-- Escáner de Cámara con Flash -->
-  <div style="position: relative; margin-top: 12px;">
-    <div id="reader"></div>
-    <button class="btn-torch" id="btn-flash" onclick="toggleFlash()">🔦</button>
-  </div>
+  <!-- Escáner Cámara -->
+  <div id="reader"></div>
 
-  <!-- Buscador Manual por Código EAN -->
-  <div class="card" style="padding: 10px 14px;">
-    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 6px;">BUSCADOR POR EAN DIRECTO (13 DÍGITOS):</label>
-    <div style="display: flex; gap: 8px;">
-      <input type="number" id="input-ean-directo" placeholder="Ej: 7790580146115" inputmode="numeric">
-      <button class="btn-search" onclick="buscarPorEanDirecto()">Buscar</button>
-    </div>
-  </div>
-
-  <!-- Detalle del Producto Detectado -->
+  <!-- Resultado del Escaneo -->
   <div class="card" id="scan-result" style="display: none;">
     <span id="badge" class="status-badge"></span>
     <h3 id="prod-nombre" style="margin: 8px 0 4px 0; font-size: 16px;"></h3>
     <div style="font-size: 13px; color: #666;">Precio Góndola: <b id="prod-precio-orig"></b></div>
-    <div style="font-size: 15px; color: #111; margin-top: 2px;">Precio c/ Descuento: <b id="prod-precio-promo" style="color:var(--verde);"></b></div>
+    <div style="font-size: 15px; color: #111; margin-top: 2px;">Total con promo: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
+    <div id="fuente-info" style="font-size: 11px; color: #888; margin-top: 4px;"></div>
     
+    <!-- Ajuste manual rápido si ningún método encontró precio -->
     <div id="manual-fallback" class="manual-box" style="display: none;">
       <small style="color: #873800; font-weight: bold; display: block; margin-bottom: 6px;">
-        Asociar precio de góndola:
+        Asignar precio manualmente de góndola:
       </small>
-      <input type="text" id="input-busqueda" placeholder="Ej: pure tomate, arcor..." oninput="filtrarProductos()">
-      <div id="lista-resultados" class="resultados-busqueda" style="display: none;"></div>
+      <input type="number" id="input-precio-manual" placeholder="Ej: 1350">
+      <button class="btn-add" style="background:#1890ff; padding:8px;" onclick="guardarPrecioManual()">Fijar Precio</button>
     </div>
 
     <button class="btn-add" id="btn-agregar">Agregar al Changuito</button>
   </div>
 
-  <!-- Resumen del Changuito -->
+  <!-- Changuito Acumulado -->
   <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h3 style="margin: 0; font-size: 16px;">Mi Changuito</h3>
-      <button onclick="vaciarChanguito()" style="background: none; border: none; color: #888; font-size: 12px; cursor: pointer; text-decoration: underline;">Vaciar todo</button>
-    </div>
-
-    <div class="resumen" style="margin-top: 10px;"><span>Subtotal Góndola:</span><span id="subtotal-gondola">$0,00</span></div>
-    <div class="resumen" style="color: var(--verde);"><span>Ahorro efectivo:</span><span id="total-ahorro">-$0,00</span></div>
+    <h3 style="margin-top: 0; font-size: 16px;">Mi Changuito</h3>
+    <div class="resumen"><span>Subtotal Góndola:</span><span id="subtotal-gondola">$0,00</span></div>
+    <div class="resumen" style="color: #00873a;"><span>Ahorro total:</span><span id="total-ahorro">-$0,00</span></div>
     <div class="resumen total-final"><span>Total a pagar:</span><span id="total-pagar">$0,00</span></div>
     
-    <div id="lista-changuito" style="margin-top: 12px;"></div>
+    <div id="lista-changuito" style="margin-top: 12px;">
+      <small style="color: #999;">Aún no agregaste productos.</small>
+    </div>
   </div>
 
   <script>
     let catalogo = [];
-    let changuito = JSON.parse(localStorage.getItem('changuito_items') || '[]');
-    let mapaMemoria = JSON.parse(localStorage.getItem('changuito_ean_map') || '{}');
+    let changuito = [];
     let ultimoEscaneado = null;
-    let html5QrCode = null;
-    let flashEncendido = false;
+    let DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
 
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function beep() {
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.08);
-      if (navigator.vibrate) navigator.vibrate(60);
-    }
+    // Memoria persistente en el celular
+    let mapaMemoria = JSON.parse(localStorage.getItem('changuito_ean_map') || '{}');
 
+    // 1. Cargar archivo local de Python
     fetch('productos.json')
       .then(r => r.json())
       .then(data => {
         catalogo = data;
-        actualizarTotales();
+        console.log(`Catálogo cargado: ${catalogo.length} artículos.`);
       })
-      .catch(err => console.error("Error al cargar productos.json:", err));
-
-    function normalizar(str) {
-      return (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    }
+      .catch(err => console.error("Error cargando productos.json:", err));
 
     function cambiarPromo() {
+      DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
       actualizarTotales();
       if (ultimoEscaneado) {
-        mostrarProducto(ultimoEscaneado.nombre, ultimoEscaneado.precioLista, ultimoEscaneado.excluido, ultimoEscaneado.codigo);
+        mostrarProducto(ultimoEscaneado.nombre, ultimoEscaneado.precioLista, ultimoEscaneado.codigo, ultimoEscaneado.fuente);
       }
     }
 
-    function mostrarProducto(nombre, precio, esExcluido, codigo) {
-      const select = document.getElementById('select-promo');
-      const descPorc = parseFloat(select.value);
-      const aplica = !esExcluido && descPorc > 0;
-      const precioFinal = aplica ? precio * (1 - descPorc) : precio;
+    // Reglas de exclusión legal de bancos
+    function evaluarExclusion(nombre) {
+      const nom = nombre.toLowerCase();
+      const vetados = [
+        "fernet", "branca", "aperitivo", "gancia", "campari", "whisky", "vodka", "gin",
+        "catena", "rutini", "chandon", "luigi bosca", "trumpeter", "bianchi", "enemigo",
+        "bodega", "espumante", "champagne", "licor", "coca-cola", "sprite", "fanta",
+        "aquarius", "schweppes", "monster", "cepita", "ades", "harina", "azucar", "aceite"
+      ];
+      return vetados.some(v => nom.includes(v));
+    }
+
+    function mostrarProducto(nombre, precio, codigo, fuente = "") {
+      const esExcluido = evaluarExclusion(nombre);
+      const aplica = !esExcluido && DESCUENTO_ACTUAL > 0;
+      const precioFinal = aplica ? precio * (1 - DESCUENTO_ACTUAL) : precio;
 
       ultimoEscaneado = {
         codigo: codigo,
@@ -163,232 +122,176 @@
         precioLista: precio,
         precioFinal: precioFinal,
         excluido: esExcluido,
-        aplicaPromo: aplica
+        aplicaPromo: aplica,
+        fuente: fuente
       };
 
       document.getElementById('scan-result').style.display = 'block';
       document.getElementById('prod-nombre').innerText = nombre;
       document.getElementById('prod-precio-orig').innerText = `$${precio.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
       document.getElementById('prod-precio-promo').innerText = `$${precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('fuente-info').innerText = fuente ? `Origen: ${fuente}` : '';
 
       const badge = document.getElementById('badge');
       if (aplica) {
-        badge.className = 'status-badge verde-badge';
-        badge.innerText = `APLICA ${(descPorc * 100).toFixed(0)}% OFF`;
+        badge.className = 'status-badge verde';
+        badge.innerText = `APLICA ${(DESCUENTO_ACTUAL * 100).toFixed(0)}% OFF`;
       } else {
-        badge.className = 'status-badge rojo-badge';
+        badge.className = 'status-badge rojo';
         badge.innerText = 'EXCLUIDO DE LA PROMO';
       }
-    }
 
-    function onScanSuccess(codigoLeido) {
-      beep();
-      procesarCodigo(codigoLeido);
-    }
-
-    function buscarPorEanDirecto() {
-      const input = document.getElementById('input-ean-directo').value.trim();
-      if (!input) return;
-      beep();
-      procesarCodigo(input);
-      document.getElementById('input-ean-directo').value = '';
-    }
-
-    async function procesarCodigo(codigoLeido) {
-      if (mapaMemoria[codigoLeido]) {
-        const p = mapaMemoria[codigoLeido];
+      if (precio === 0) {
+        document.getElementById('manual-fallback').style.display = 'block';
+      } else {
         document.getElementById('manual-fallback').style.display = 'none';
-        mostrarProducto(p.nombre, p.precio, p.excluido, codigoLeido);
-        return;
       }
+    }
 
-      let p = catalogo.find(item => item.codigo === codigoLeido || (item.ean && item.ean === codigoLeido));
-      if (p) {
-        document.getElementById('manual-fallback').style.display = 'none';
-        mostrarProducto(p.nombre, p.precio, p.excluido, codigoLeido);
-        return;
-      }
-
-      document.getElementById('manual-fallback').style.display = 'none';
-      mostrarProducto("Buscando código " + codigoLeido + "...", 0.0, true, codigoLeido);
-
+    // Consulta en vivo a la base internacional Open Food Facts
+    async function consultarOpenFoodFacts(ean) {
       try {
-        const resp = await fetch(`https://world.openfoodfacts.org/api/v0/product/${codigoLeido}.json`);
-        const info = await resp.json();
-
-        if (info.status === 1 && info.product) {
-          const nombreDetectado = info.product.product_name || info.product.generic_name || "";
-          const marcaDetectada = info.product.brands || "";
-          const terminoBusqueda = `${nombreDetectado} ${marcaDetectada}`.trim();
-
-          const palabras = normalizar(terminoBusqueda).split(/\s+/).filter(w => w.length > 2);
-          let matchCoto = catalogo.find(item => {
-            const nom = normalizar(item.nombre);
-            return palabras.some(w => nom.includes(w));
-          });
-
-          if (matchCoto) {
-            mapaMemoria[codigoLeido] = {
-              nombre: matchCoto.nombre,
-              precio: matchCoto.precio,
-              excluido: matchCoto.excluido
-            };
-            localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
-            mostrarProducto(matchCoto.nombre, matchCoto.precio, matchCoto.excluido, codigoLeido);
-            return;
-          }
+        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${ean}.json`);
+        const data = await res.json();
+        if (data.status === 1 && data.product) {
+          const p = data.product;
+          return p.product_name_es || p.product_name || p.generic_name || null;
         }
       } catch (e) {
-        console.warn("Fallo consulta API EAN:", e);
+        console.warn("Fallo consulta Open Food Facts:", e);
       }
-
-      document.getElementById('manual-fallback').style.display = 'block';
-      document.getElementById('input-busqueda').value = '';
-      document.getElementById('lista-resultados').style.display = 'none';
-      mostrarProducto("Código: " + codigoLeido, 0.0, true, codigoLeido);
+      return null;
     }
 
-    function filtrarProductos() {
-      const txt = normalizar(document.getElementById('input-busqueda').value.trim());
-      const cont = document.getElementById('lista-resultados');
-      if (txt.length < 2) { cont.style.display = 'none'; return; }
+    // Búsqueda aproximada en el catálogo local por nombre
+    function buscarPrecioEnCatalogo(nombreIdentificado) {
+      const palabras = nombreIdentificado.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+      let mejorMatch = null;
+      let maxCoincidencias = 0;
 
-      const palabras = txt.split(/\s+/);
-      const matches = catalogo.filter(item => {
-        const nom = normalizar(item.nombre);
-        return palabras.every(p => nom.includes(p));
-      }).slice(0, 15);
+      for (let item of catalogo) {
+        const nom = item.nombre.toLowerCase();
+        let coincidencias = 0;
+        for (let pal of palabras) {
+          if (nom.includes(pal)) coincidencias++;
+        }
+        if (coincidencias > maxCoincidencias) {
+          maxCoincidencias = coincidencias;
+          mejorMatch = item;
+        }
+      }
 
-      if (matches.length === 0) {
-        cont.innerHTML = '<div style="padding:8px; font-size:12px; color:#888;">No hay coincidencias.</div>';
-        cont.style.display = 'block';
+      // Si coincide en al menos 2 palabras clave, tomamos ese precio de Coto
+      return maxCoincidencias >= 2 ? mejorMatch : null;
+    }
+
+    async function onScanSuccess(codigoLeido) {
+      // 1. Memoria previa guardada en el dispositivo
+      if (mapaMemoria[codigoLeido]) {
+        const p = mapaMemoria[codigoLeido];
+        mostrarProducto(p.nombre, p.precio, codigoLeido, "Memoria local");
         return;
       }
 
-      cont.innerHTML = matches.map(item => `
-        <div class="opcion-prod" onclick="vincularSeleccionado(${catalogo.indexOf(item)})">
-          <span>${item.nombre}</span>
-          <b>$${item.precio.toLocaleString('es-AR', {minimumFractionDigits: 2})}</b>
-        </div>
-      `).join('');
-      cont.style.display = 'block';
+      // 2. Buscar en base de datos local de Coto por EAN
+      const encontradoCoto = catalogo.find(p => p.ean === codigoLeido);
+      if (encontradoCoto) {
+        mostrarProducto(encontradoCoto.nombre, encontradoCoto.precio, codigoLeido, "Catálogo Coto");
+        return;
+      }
+
+      // 3. Fallback: Base Internacional Open Food Facts
+      document.getElementById('scan-result').style.display = 'block';
+      document.getElementById('prod-nombre').innerText = "Identificando en base universal...";
+      document.getElementById('badge').className = 'status-badge amarillo';
+      document.getElementById('badge').innerText = 'CONSULTANDO GS1...';
+
+      const nombreInternacional = await consultarOpenFoodFacts(codigoLeido);
+
+      if (nombreInternacional) {
+        // Intentar cruzar el nombre universal con la lista de precios de Coto
+        const matchPrecio = buscarPrecioEnCatalogo(nombreInternacional);
+        const precioAsignado = matchPrecio ? matchPrecio.precio : 0.0;
+        const nombreFinal = matchPrecio ? matchPrecio.nombre : nombreInternacional;
+
+        // Guardar en memoria local
+        mapaMemoria[codigoLeido] = { nombre: nombreFinal, precio: precioAsignado };
+        localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
+
+        mostrarProducto(nombreFinal, precioAsignado, codigoLeido, matchPrecio ? "Open Food Facts + Coto" : "Open Food Facts");
+      } else {
+        // Si no se encuentra en ningún registro
+        mostrarProducto(`Código: ${codigoLeido}`, 0.0, codigoLeido, "No indexado");
+      }
     }
 
-    function vincularSeleccionado(idx) {
-      const p = catalogo[idx];
-      mapaMemoria[ultimoEscaneado.codigo] = {
-        nombre: p.nombre,
-        precio: p.precio,
-        excluido: p.excluido
-      };
-      localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
-      mostrarProducto(p.nombre, p.precio, p.excluido, ultimoEscaneado.codigo);
-      document.getElementById('manual-fallback').style.display = 'none';
+    function guardarPrecioManual() {
+      const val = parseFloat(document.getElementById('input-precio-manual').value);
+      if (val > 0 && ultimoEscaneado) {
+        mapaMemoria[ultimoEscaneado.codigo] = {
+          nombre: ultimoEscaneado.nombre,
+          precio: val
+        };
+        localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
+        mostrarProducto(ultimoEscaneado.nombre, val, ultimoEscaneado.codigo, "Ingreso manual");
+      }
     }
 
     document.getElementById('btn-agregar').addEventListener('click', () => {
-      if (!ultimoEscaneado || ultimoEscaneado.precioLista <= 0) {
-        alert("Asociá el precio del artículo antes de sumarlo.");
-        return;
-      }
-      
-      const existente = changuito.find(i => i.codigo === ultimoEscaneado.codigo);
-      if (existente) {
-        existente.cantidad += 1;
+      if (ultimoEscaneado && ultimoEscaneado.precioLista > 0) {
+        changuito.push({...ultimoEscaneado});
+        actualizarTotales();
+        document.getElementById('scan-result').style.display = 'none';
+        ultimoEscaneado = null;
       } else {
-        changuito.push({ ...ultimoEscaneado, cantidad: 1 });
+        alert("Fijá el precio del producto antes de agregarlo al changuito.");
       }
-
-      guardarChanguito();
-      document.getElementById('scan-result').style.display = 'none';
-      ultimoEscaneado = null;
     });
 
-    function cambiarCantidad(idx, delta) {
-      changuito[idx].cantidad += delta;
-      if (changuito[idx].cantidad <= 0) changuito.splice(idx, 1);
-      guardarChanguito();
-    }
-
-    function borrarItem(idx) {
-      changuito.splice(idx, 1);
-      guardarChanguito();
-    }
-
-    function vaciarChanguito() {
-      if (confirm("¿Vaciar todo el changuito?")) {
-        changuito = [];
-        guardarChanguito();
-      }
-    }
-
-    function guardarChanguito() {
-      localStorage.setItem('changuito_items', JSON.stringify(changuito));
+    function borrarItem(index) {
+      changuito.splice(index, 1);
       actualizarTotales();
     }
 
     function actualizarTotales() {
-      const select = document.getElementById('select-promo');
-      const descPorc = parseFloat(select.value);
-
-      let subtotalGondola = 0;
-      let ahorroTotal = 0;
+      let subtotal = 0;
+      let pagar = 0;
 
       changuito.forEach(item => {
-        const itemTotal = item.precioLista * item.cantidad;
-        subtotalGondola += itemTotal;
-        if (item.aplicaPromo && descPorc > 0) {
-          ahorroTotal += itemTotal * descPorc;
-        }
+        subtotal += item.precioLista;
+        pagar += item.precioFinal;
       });
 
-      const totalPagar = subtotalGondola - ahorroTotal;
+      let ahorro = subtotal - pagar;
 
-      document.getElementById('subtotal-gondola').innerText = `$${subtotalGondola.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
-      document.getElementById('total-ahorro').innerText = `-$${ahorroTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
-      document.getElementById('total-pagar').innerText = `$${totalPagar.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('subtotal-gondola').innerText = `$${subtotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('total-ahorro').innerText = `-$${ahorro.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('total-pagar').innerText = `$${pagar.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
 
-      const contenedor = document.getElementById('lista-changuito');
+      const lista = document.getElementById('lista-changuito');
       if (changuito.length === 0) {
-        contenedor.innerHTML = '<small style="color: #999;">El changuito está vacío.</small>';
+        lista.innerHTML = '<small style="color: #999;">Aún no agregaste productos.</small>';
         return;
       }
 
-      contenedor.innerHTML = changuito.map((i, idx) => `
+      lista.innerHTML = changuito.map((i, idx) => `
         <div class="item-fila">
-          <div class="item-info">
-            <div><b>${i.nombre}</b></div>
-            <small style="color:${i.aplicaPromo && descPorc > 0 ? 'var(--verde)' : 'var(--rojo)'}">
-              $${i.precioLista.toFixed(2)} c/u ${i.aplicaPromo && descPorc > 0 ? '(Aplica descuento)' : '(Sin descuento)'}
-            </small>
+          <div style="flex: 1;">
+            <div>${i.nombre}</div>
+            <small style="color: ${i.aplicaPromo ? '#00873a' : '#e02424'}">${i.aplicaPromo ? 'Aplica promo' : 'Excluido'}</small>
           </div>
-          <div class="item-controles">
-            <button class="btn-qty" onclick="cambiarCantidad(${idx}, -1)">-</button>
-            <span><b>${i.cantidad}</b></span>
-            <button class="btn-qty" onclick="cambiarCantidad(${idx}, 1)">+</button>
-            <button class="btn-borrar" onclick="borrarItem(${idx})">×</button>
-          </div>
+          <b style="margin: 0 8px;">$${i.precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</b>
+          <button class="btn-borrar" onclick="borrarItem(${idx})">X</button>
         </div>
       `).join('');
     }
 
-    async function toggleFlash() {
-      try {
-        flashEncendido = !flashEncendido;
-        await html5QrCode.applyVideoConstraints({
-          advanced: [{ torch: flashEncendido }]
-        });
-      } catch(e) {
-        alert("Flash no disponible en este dispositivo.");
-      }
-    }
-
-    html5QrCode = new Html5Qrcode("reader");
+    const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
       { facingMode: "environment" },
-      { fps: 12, qrbox: { width: 250, height: 140 } },
+      { fps: 10, qrbox: { width: 250, height: 140 } },
       onScanSuccess
-    ).catch(err => console.error("Error al encender cámara:", err));
+    ).catch(err => console.error("Error al encender la cámara:", err));
   </script>
 </body>
 </html>
