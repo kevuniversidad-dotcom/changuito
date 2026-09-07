@@ -3,59 +3,205 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Changuito Coto</title>
+  <title>Changuito Inteligente Coto</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 12px; background: #f4f5f7; color: #1c1e21; }
-    #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    .card { background: white; padding: 14px; border-radius: 12px; margin-top: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .status-badge { display: inline-block; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; text-transform: uppercase; }
-    .verde { background: #e6f7ec; color: #00873a; border: 1px solid #a3e6b9; }
-    .rojo { background: #fde8e8; color: #e02424; border: 1px solid #f8b4b4; }
-    .amarillo { background: #fffbe6; color: #d48806; border: 1px solid #ffe58f; }
-    .btn-add { width: 100%; background: #00873a; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 10px; cursor: pointer; }
-    .resumen { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
-    .total-final { font-size: 18px; font-weight: bold; color: #111; border-top: 1px dashed #ccc; padding-top: 8px; margin-top: 8px; }
-    .item-fila { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #f0f0f0; }
-    .btn-borrar { background: #ff4d4f; color: white; border: none; border-radius: 4px; padding: 3px 8px; font-size: 12px; margin-left: 8px; cursor: pointer; }
-    select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; }
-    .btn-reset-total { width: 100%; background: #ffeef0; color: #d93025; border: 1px solid #f5c2c7; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 8px; }
+    :root {
+      --coto-red: #d92525;
+      --coto-dark: #b31b1b;
+      --coto-bg: #f8f9fa;
+      --text-main: #1f2937;
+      --accent-green: #059669;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 12px;
+      background: var(--coto-bg);
+      color: var(--text-main);
+    }
+    .header-app {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: white;
+      padding: 10px 14px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .logo-coto {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-badge {
+      background: var(--coto-red);
+      color: white;
+      font-weight: 900;
+      font-size: 16px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+    .logo-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+    .btn-reset-top {
+      background: #fee2e2;
+      color: var(--coto-red);
+      border: 1px solid #fca5a5;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #reader {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    .card {
+      background: white;
+      padding: 14px;
+      border-radius: 12px;
+      margin-top: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .verde { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    .rojo { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .amarillo { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .btn-add {
+      width: 100%;
+      background: var(--accent-green);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    .manual-box {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    .resumen {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .total-final {
+      font-size: 18px;
+      font-weight: 800;
+      border-top: 1px dashed #d1d5db;
+      padding-top: 8px;
+      margin-top: 8px;
+      color: #111827;
+    }
+    .item-fila {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .btn-borrar {
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 3px 7px;
+      font-size: 11px;
+      margin-left: 8px;
+      cursor: pointer;
+    }
+    select, input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
 
-  <button class="btn-reset-total" onclick="vaciarMemoria()">🗑️ Vaciar memoria y resetear datos guardados</button>
+  <!-- Barra de Encabezado con Logo Coto -->
+  <div class="header-app">
+    <div class="logo-coto">
+      <span class="logo-badge">COTO</span>
+      <span class="logo-title">Changuito</span>
+    </div>
+    <button class="btn-reset-top" onclick="vaciarMemoria()">🗑️ Resetear Memoria</button>
+  </div>
 
+  <!-- Selector de Beneficio Bancario -->
   <div class="card" style="margin-top: 0;">
-    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">BENEFICIO BANCARIO:</label>
+    <label style="font-size: 11px; font-weight: 700; color: #4b5563; display: block; margin-bottom: 4px;">BENEFICIO VIGENTE:</label>
     <select id="select-promo" onchange="cambiarPromo()">
       <option value="0.30">Jueves: 30% Visa Débito NFC</option>
       <option value="0.20">Finde: 20% Mercado Pago</option>
       <option value="0.25">Viernes: 25% Mercado Pago</option>
-      <option value="0.00">Sin Descuento (Precio Lista)</option>
+      <option value="0.00">Sin Descuento (Precio Góndola)</option>
     </select>
   </div>
 
+  <!-- Visor de Escáner -->
   <div id="reader"></div>
 
+  <!-- Resultado del Escaneo -->
   <div class="card" id="scan-result" style="display: none;">
     <span id="badge" class="status-badge"></span>
     <h3 id="prod-nombre" style="margin: 8px 0 4px 0; font-size: 16px;"></h3>
-    <div style="font-size: 13px; color: #666;">Precio Góndola Coto: <b id="prod-precio-orig"></b></div>
-    <div style="font-size: 15px; color: #111; margin-top: 2px;">Total con promo: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
-    <div id="fuente-info" style="font-size: 11px; color: #888; margin-top: 4px;"></div>
+    <div style="font-size: 13px; color: #4b5563;">Precio Góndola: <b id="prod-precio-orig"></b></div>
+    <div style="font-size: 15px; color: #111; margin-top: 2px;">Total con descuento: <b id="prod-precio-promo" style="color:var(--accent-green);"></b></div>
+    <div id="fuente-info" style="font-size: 11px; color: #6b7280; margin-top: 4px;"></div>
     
+    <!-- Caja para fijar/editar precio manual de góndola -->
+    <div id="manual-fallback" class="manual-box" style="display: none;">
+      <small style="color: #92400e; font-weight: 700; display: block; margin-bottom: 6px;">
+        Ingresar precio de góndola de Coto:
+      </small>
+      <div style="display: flex; gap: 6px;">
+        <input type="number" id="input-precio-manual" placeholder="Ej: 1150" step="any">
+        <button class="btn-add" style="background: #2563eb; width: auto; margin-top: 0; padding: 0 14px; white-space: nowrap;" onclick="guardarPrecioManual()">Fijar</button>
+      </div>
+    </div>
+
     <button class="btn-add" id="btn-agregar">Agregar al Changuito</button>
   </div>
 
+  <!-- Resumen del Changuito -->
   <div class="card">
     <h3 style="margin-top: 0; font-size: 16px;">Mi Changuito</h3>
     <div class="resumen"><span>Subtotal Góndola:</span><span id="subtotal-gondola">$0,00</span></div>
-    <div class="resumen" style="color: #00873a;"><span>Ahorro total:</span><span id="total-ahorro">-$0,00</span></div>
+    <div class="resumen" style="color: var(--accent-green);"><span>Ahorro total:</span><span id="total-ahorro">-$0,00</span></div>
     <div class="resumen total-final"><span>Total a pagar:</span><span id="total-pagar">$0,00</span></div>
     
     <div id="lista-changuito" style="margin-top: 12px;">
-      <small style="color: #999;">Aún no agregaste productos.</small>
+      <small style="color: #9ca3af;">Aún no agregaste productos.</small>
     </div>
   </div>
 
@@ -65,41 +211,41 @@
     let ultimoEscaneado = null;
     let DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
 
-    // Memoria interna
+    // Memoria local en el dispositivo
     let mapaMemoria = JSON.parse(localStorage.getItem('changuito_ean_map') || '{}');
 
-    // 1. Cargar archivo generado por Python
+    // Carga de catálogo general Coto
     fetch('productos.json')
       .then(r => r.json())
       .then(data => {
         catalogo = data;
-        console.log(`Catálogo cargado: ${catalogo.length} productos.`);
+        console.log(`Catálogo cargado: ${catalogo.length} artículos.`);
       })
       .catch(err => console.error("Error al cargar productos.json:", err));
 
-    // Botón de reseteo completo
     function vaciarMemoria() {
-      localStorage.removeItem('changuito_ean_map');
-      mapaMemoria = {};
-      document.getElementById('scan-result').style.display = 'none';
-      ultimoEscaneado = null;
-      alert("Memoria borrada exitosamente.");
+      if (confirm("¿Querés vaciar todos los precios memorizados en el celular?")) {
+        localStorage.removeItem('changuito_ean_map');
+        mapaMemoria = {};
+        document.getElementById('scan-result').style.display = 'none';
+        ultimoEscaneado = null;
+        alert("Memoria restablecida correctamente.");
+      }
     }
 
     function cambiarPromo() {
       DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
       actualizarTotales();
-      if (ultimoEscaneado && ultimoEscaneado.precioLista > 0) {
+      if (ultimoEscaneado) {
         mostrarProducto(ultimoEscaneado.nombre, ultimoEscaneado.precioLista, ultimoEscaneado.codigo, ultimoEscaneado.fuente);
       }
     }
 
-    // Normalización de texto (elimina tildes y diacríticos)
     function normalizar(texto) {
       return (texto || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     }
 
-    // Exclusiones bancarias oficiales
+    // Reglas de exclusión de promos bancarias
     function evaluarExclusion(nombre) {
       const nom = normalizar(nombre);
       const vetados = [
@@ -128,14 +274,16 @@
 
       document.getElementById('scan-result').style.display = 'block';
       document.getElementById('prod-nombre').innerText = nombre;
-      document.getElementById('prod-precio-orig').innerText = precio > 0 ? `$${precio.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No encontrado';
-      document.getElementById('prod-precio-promo').innerText = precio > 0 ? `$${precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No encontrado';
+      document.getElementById('prod-precio-orig').innerText = precio > 0 ? `$${precio.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'Sin precio';
+      document.getElementById('prod-precio-promo').innerText = precio > 0 ? `$${precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'Sin precio';
       document.getElementById('fuente-info').innerText = fuente ? `Origen: ${fuente}` : '';
 
       const badge = document.getElementById('badge');
+      const boxManual = document.getElementById('manual-fallback');
       const btnAgregar = document.getElementById('btn-agregar');
 
       if (precio > 0) {
+        boxManual.style.display = 'none';
         btnAgregar.style.display = 'block';
         if (aplica) {
           badge.className = 'status-badge verde';
@@ -145,13 +293,13 @@
           badge.innerText = esExcluido ? 'EXCLUIDO DE LA PROMO' : 'PRECIO LISTA';
         }
       } else {
+        boxManual.style.display = 'block';
         btnAgregar.style.display = 'none';
-        badge.className = 'status-badge rojo';
-        badge.innerText = 'PRODUCTO SIN PRECIO EN COTO';
+        badge.className = 'status-badge amarillo';
+        badge.innerText = 'PRECIO PENDIENTE';
       }
     }
 
-    // Consulta en vivo a la base internacional para extraer el nombre por código EAN
     async function consultarOpenFoodFacts(ean) {
       try {
         const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${ean}.json`);
@@ -166,7 +314,6 @@
       return null;
     }
 
-    // Búsqueda inteligente en el catálogo local de Coto por coincidencia de términos
     function buscarPrecioEnCatalogo(nombreBuscado) {
       const palabras = normalizar(nombreBuscado).split(/\s+/).filter(w => w.length > 2);
       if (palabras.length === 0) return null;
@@ -186,38 +333,37 @@
         }
       }
 
-      // Si coincide en al menos 2 palabras clave (ej: "pure" y "arcor"), lo toma automáticamente
       return maxCoincidencias >= 2 ? mejorMatch : null;
     }
 
     async function onScanSuccess(codigoLeido) {
-      // 1. Memoria previa guardada (solo si tiene precio válido mayor a 0)
+      // 1. Memoria previa guardada con precio válido
       if (mapaMemoria[codigoLeido] && mapaMemoria[codigoLeido].precio > 0) {
         const p = mapaMemoria[codigoLeido];
-        mostrarProducto(p.nombre, p.precio, codigoLeido, "Memoria local");
+        mostrarProducto(p.nombre, p.precio, codigoLeido, "Memoria guardada");
         return;
       }
 
-      // 2. Buscar directo en catálogo Coto por EAN
-      const matchCotoDirecto = catalogo.find(p => (p.ean === codigoLeido || p.codigo === codigoLeido) && p.precio > 0);
-      if (matchCotoDirecto) {
-        mapaMemoria[codigoLeido] = { nombre: matchCotoDirecto.nombre, precio: matchCotoDirecto.precio };
+      // 2. Catálogo Coto por EAN
+      const matchCoto = catalogo.find(p => (p.ean === codigoLeido || p.codigo === codigoLeido) && p.precio > 0);
+      if (matchCoto) {
+        mapaMemoria[codigoLeido] = { nombre: matchCoto.nombre, precio: matchCoto.precio };
         localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
-        mostrarProducto(matchCotoDirecto.nombre, matchCotoDirecto.precio, codigoLeido, "Catálogo Coto (EAN)");
+        mostrarProducto(matchCoto.nombre, matchCoto.precio, codigoLeido, "Catálogo Coto");
         return;
       }
 
-      // 3. Fallback automático: buscar nombre internacional y cruzar precio de Coto
+      // 3. Fallback: Base internacional
       document.getElementById('scan-result').style.display = 'block';
-      document.getElementById('prod-nombre').innerText = "Buscando en catálogo...";
+      document.getElementById('prod-nombre').innerText = "Identificando en base universal...";
       document.getElementById('badge').className = 'status-badge amarillo';
-      document.getElementById('badge').innerText = 'IDENTIFICANDO...';
+      document.getElementById('badge').innerText = 'CONSULTANDO GS1...';
+      document.getElementById('manual-fallback').style.display = 'none';
       document.getElementById('btn-agregar').style.display = 'none';
 
       const nombreInternacional = await consultarOpenFoodFacts(codigoLeido);
 
       if (nombreInternacional) {
-        // Cruce automático de precio con la base de Coto
         const matchPrecioCoto = buscarPrecioEnCatalogo(nombreInternacional);
 
         if (matchPrecioCoto && matchPrecioCoto.precio > 0) {
@@ -225,11 +371,25 @@
           localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
           mostrarProducto(matchPrecioCoto.nombre, matchPrecioCoto.precio, codigoLeido, "Coto (Búsqueda cruzada)");
         } else {
-          // Detectó el producto pero no está en la base actual de Coto
-          mostrarProducto(nombreInternacional, 0.0, codigoLeido, "Sin precio en catálogo Coto");
+          mostrarProducto(nombreInternacional, 0.0, codigoLeido, "Nombre reconocido (sin precio Coto)");
         }
       } else {
-        mostrarProducto(`Código no catalogado: ${codigoLeido}`, 0.0, codigoLeido, "No encontrado");
+        mostrarProducto(`Artículo (${codigoLeido})`, 0.0, codigoLeido, "Código no indexado");
+      }
+    }
+
+    function guardarPrecioManual() {
+      const val = parseFloat(document.getElementById('input-precio-manual').value);
+      if (val > 0 && ultimoEscaneado) {
+        mapaMemoria[ultimoEscaneado.codigo] = {
+          nombre: ultimoEscaneado.nombre,
+          precio: val
+        };
+        localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
+        mostrarProducto(ultimoEscaneado.nombre, val, ultimoEscaneado.codigo, "Góndola Coto");
+        document.getElementById('input-precio-manual').value = '';
+      } else {
+        alert("Ingresá un precio numérico válido.");
       }
     }
 
@@ -264,7 +424,7 @@
 
       const lista = document.getElementById('lista-changuito');
       if (changuito.length === 0) {
-        lista.innerHTML = '<small style="color: #999;">Aún no agregaste productos.</small>';
+        lista.innerHTML = '<small style="color: #9ca3af;">Aún no agregaste productos.</small>';
         return;
       }
 
@@ -272,7 +432,7 @@
         <div class="item-fila">
           <div style="flex: 1;">
             <div>${i.nombre}</div>
-            <small style="color: ${i.aplicaPromo ? '#00873a' : '#e02424'}">${i.aplicaPromo ? 'Aplica 30%' : 'Excluido'}</small>
+            <small style="color: ${i.aplicaPromo ? '#059669' : '#dc2626'}">${i.aplicaPromo ? 'Aplica descuento' : 'Sin descuento'}</small>
           </div>
           <b style="margin: 0 8px;">$${i.precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</b>
           <button class="btn-borrar" onclick="borrarItem(${idx})">X</button>
@@ -285,7 +445,7 @@
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 250, height: 140 } },
       onScanSuccess
-    ).catch(err => console.error("Error al iniciar la cámara:", err));
+    ).catch(err => console.error("Error al iniciar cámara:", err));
   </script>
 </body>
 </html>
