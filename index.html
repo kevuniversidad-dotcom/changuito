@@ -143,13 +143,12 @@
     <button class="btn-compartir" id="btn-compartir" style="display:none;" onclick="compartirResumen()">📲 Compartir resumen / WhatsApp</button>
   </div>
 
-  <!-- MODAL PARA CORREGIR PRECIO CON TECLADO NUMÉRICO DIRECTO -->
+  <!-- MODAL CON TECLADO NUMÉRICO DIRECTO -->
   <div id="modal-precio" class="modal-overlay">
     <div class="modal-box">
       <h4 style="margin: 0 0 6px 0; font-size: 16px; text-align: center;">Corregir Precio de Góndola</h4>
       <p style="margin: 0; font-size: 12px; color: #666; text-align: center;">Ingresá el precio visible en góndola:</p>
       
-      <!-- inputmode="decimal" y pattern activan teclado numérico directo en celular -->
       <input 
         type="number" 
         step="0.01" 
@@ -337,7 +336,7 @@
       if (precio > 0) {
         btnAgregar.style.display = 'block';
         manualBox.style.display = 'none';
-        if (reproducirAudio) reproducirSonidoPositivo();
+        if (reproducirAudio) reproducirSonivoPositivo();
 
         if (aplica) {
           badge.className = 'status-badge verde';
@@ -355,7 +354,6 @@
       }
     }
 
-    // Modal con teclado numérico
     function abrirModalPrecio() {
       if (!ultimoEscaneado) return;
       const modal = document.getElementById('modal-precio');
@@ -524,18 +522,30 @@
       }
 
       btnCompartir.style.display = 'block';
-      lista.innerHTML = changuito.map((i, idx) => `
-        <div class="item-fila">
-          <div style="flex: 1;">
-            <div><b>${i.nombre}</b> <span style="color:#1877f2; font-weight:bold;">x ${i.cantidad} u.</span></div>
-            <small style="color: ${i.aplicaPromo ? '#00873a' : '#e02424'}">
-              ${i.aplicaPromo ? 'Aplica promo' : 'Excluido'} ($${i.precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})} c/u)
-            </small>
+      lista.innerHTML = changuito.map((i, idx) => {
+        const totalFilaLista = i.precioLista * i.cantidad;
+        const totalFilaFinal = i.precioFinal * i.cantidad;
+
+        return `
+          <div class="item-fila">
+            <div style="flex: 1;">
+              <div><b>${i.nombre}</b> <span style="color:#1877f2; font-weight:bold;">x ${i.cantidad} u.</span></div>
+              <small style="color: ${i.aplicaPromo ? '#00873a' : '#e02424'}">
+                ${i.aplicaPromo ? 'Aplica promo' : 'Excluido'} ($${i.precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})} c/u)
+              </small>
+            </div>
+
+            <div style="text-align: right; margin: 0 8px;">
+              ${i.aplicaPromo ? `<div style="font-size: 11px; color: #888; text-decoration: line-through;">$${totalFilaLista.toLocaleString('es-AR', {minimumFractionDigits: 2})}</div>` : ''}
+              <b style="font-size: 14px; color: ${i.aplicaPromo ? '#00873a' : '#111'};">
+                $${totalFilaFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}
+              </b>
+            </div>
+
+            <button class="btn-borrar" onclick="borrarItem(${idx})">X</button>
           </div>
-          <b style="margin: 0 8px;">$${(i.precioFinal * i.cantidad).toLocaleString('es-AR', {minimumFractionDigits: 2})}</b>
-          <button class="btn-borrar" onclick="borrarItem(${idx})">X</button>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     function compartirResumen() {
