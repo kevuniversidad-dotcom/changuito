@@ -6,142 +6,178 @@
   <title>Changuito Coto</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 12px; background: #f4f5f7; color: #1c1e21; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 12px; background: #f0f2f5; color: #1c1e21; }
+    
+    /* Cabecera con Logo de Coto */
+    .header-coto { display: flex; align-items: center; justify-content: space-between; background: #fff; padding: 10px 14px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 12px; }
+    .logo-container { display: flex; align-items: center; gap: 8px; }
+    .coto-badge-logo { background: #d9251d; color: white; font-weight: 900; font-style: italic; font-size: 20px; padding: 4px 10px; border-radius: 6px; letter-spacing: 1px; }
+    .titulo-app { font-size: 15px; font-weight: bold; color: #333; margin: 0; }
+    
     #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .card { background: white; padding: 14px; border-radius: 12px; margin-top: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .status-badge { display: inline-block; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; text-transform: uppercase; }
     .verde { background: #e6f7ec; color: #00873a; border: 1px solid #a3e6b9; }
     .rojo { background: #fde8e8; color: #e02424; border: 1px solid #f8b4b4; }
     .amarillo { background: #fffbe6; color: #d48806; border: 1px solid #ffe58f; }
+    
     .btn-add { width: 100%; background: #00873a; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+    .btn-cancel { width: 100%; background: #e4e6eb; color: #333; border: none; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: bold; margin-top: 6px; cursor: pointer; }
+    
+    /* Selector de Cantidad */
+    .selector-cantidad { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 10px 0; }
+    .btn-qty { background: #e4e6eb; border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .qty-numero { font-size: 16px; font-weight: bold; min-width: 24px; text-align: center; }
+
     .resumen { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
     .total-final { font-size: 18px; font-weight: bold; color: #111; border-top: 1px dashed #ccc; padding-top: 8px; margin-top: 8px; }
     .item-fila { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #f0f0f0; }
     .btn-borrar { background: #ff4d4f; color: white; border: none; border-radius: 4px; padding: 3px 8px; font-size: 12px; margin-left: 8px; cursor: pointer; }
+    
     select, input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; }
-    .btn-reset-total { width: 100%; background: #ffeef0; color: #d93025; border: 1px solid #f5c2c7; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 8px; }
     .manual-box { background: #fffbe6; border: 1px solid #ffe58f; padding: 12px; border-radius: 8px; margin-top: 10px; }
+    .btn-compartir { width: 100%; background: #25d366; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+    .camara-pausada { opacity: 0.6; filter: grayscale(50%); transition: all 0.3s ease; }
   </style>
 </head>
 <body>
 
-  <button class="btn-reset-total" onclick="vaciarMemoria()">🗑️ Vaciar memoria y resetear datos guardados</button>
+  <!-- Cabecera con Logo Coto -->
+  <div class="header-coto">
+    <div class="logo-container">
+      <div class="coto-badge-logo">COTO</div>
+      <div>
+        <div class="titulo-app">Changuito Inteligente</div>
+        <div style="font-size: 11px; color: #777;">Control de Promociones</div>
+      </div>
+    </div>
+    <button style="background:none; border:none; color:#d93025; font-size:11px; font-weight:bold; cursor:pointer;" onclick="vaciarMemoria()">Resetear</button>
+  </div>
 
+  <!-- Selector de Beneficio Bancario (Sin Topes) -->
   <div class="card" style="margin-top: 0;">
     <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">BENEFICIO BANCARIO:</label>
     <select id="select-promo" onchange="cambiarPromo()">
       <option value="0.30">Jueves: 30% Visa Débito NFC</option>
       <option value="0.20">Finde: 20% Mercado Pago</option>
       <option value="0.25">Viernes: 25% Mercado Pago</option>
-      <option value="0.00">Sin Descuento (Precio Lista)</option>
+      <option value="0.00">Sin Descuento (Precio Góndola)</option>
     </select>
   </div>
 
+  <!-- Escáner Cámara -->
   <div id="reader"></div>
 
+  <!-- Tarjeta con Información Retenida -->
   <div class="card" id="scan-result" style="display: none;">
     <span id="badge" class="status-badge"></span>
     <h3 id="prod-nombre" style="margin: 8px 0 4px 0; font-size: 16px;"></h3>
-    <div style="font-size: 13px; color: #666;">Precio Góndola Coto: <b id="prod-precio-orig"></b></div>
-    <div style="font-size: 15px; color: #111; margin-top: 2px;">Total con promo: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
+    <div style="font-size: 13px; color: #666;">Precio Góndola Unitario: <b id="prod-precio-orig"></b></div>
+    <div style="font-size: 15px; color: #111; margin-top: 2px;">Total c/u con promo: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
     <div id="fuente-info" style="font-size: 11px; color: #888; margin-top: 4px;"></div>
+
+    <!-- Multiplicador de cantidad -->
+    <div class="selector-cantidad">
+      <button class="btn-qty" onclick="ajustarCantidad(-1)">-</button>
+      <span class="qty-numero" id="cant-display">1</span>
+      <button class="btn-qty" onclick="ajustarCantidad(1)">+</button>
+      <span style="font-size: 12px; color: #666;">unidades</span>
+    </div>
     
     <div id="manual-fallback" class="manual-box" style="display: none;">
       <small style="color: #873800; font-weight: bold; display: block; margin-bottom: 6px;">
-        Asignar precio manualmente:
+        Asignar precio manualmente si no figura en Coto:
       </small>
       <input type="number" id="input-precio-manual" placeholder="Ej: 1110">
       <button class="btn-add" style="background:#1890ff; padding:8px;" onclick="guardarPrecioManual()">Fijar Precio</button>
     </div>
 
-    <button class="btn-add" id="btn-agregar">Agregar al Changuito</button>
+    <button class="btn-add" id="btn-agregar">✅ Agregar al Changuito</button>
+    <button class="btn-cancel" onclick="reanudarEscaneo()">🔄 Escanear otro producto</button>
   </div>
 
+  <!-- Changuito Acumulado -->
   <div class="card">
-    <h3 style="margin-top: 0; font-size: 16px;">Mi Changuito</h3>
-    <div class="resumen"><span>Subtotal Góndola:</span><span id="subtotal-gondola">$0,00</span></div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="margin: 0; font-size: 16px;">Mi Changuito</h3>
+      <span id="cant-items-totales" style="font-size: 12px; color: #666; font-weight: bold;">0 artículos</span>
+    </div>
+    
+    <div class="resumen" style="margin-top: 10px;"><span>Subtotal Góndola:</span><span id="subtotal-gondola">$0,00</span></div>
     <div class="resumen" style="color: #00873a;"><span>Ahorro total:</span><span id="total-ahorro">-$0,00</span></div>
-    <div class="resumen total-final"><span>Total a pagar:</span><span id="total-pagar">$0,00</span></div>
+    <div class="resumen total-final"><span>Total a pagar en caja:</span><span id="total-pagar">$0,00</span></div>
     
     <div id="lista-changuito" style="margin-top: 12px;">
       <small style="color: #999;">Aún no agregaste productos.</small>
     </div>
+
+    <button class="btn-compartir" id="btn-compartir" style="display:none;" onclick="compartirResumen()">📲 Compartir resumen / WhatsApp</button>
   </div>
 
   <script>
     let catalogo = [];
     let changuito = [];
     let ultimoEscaneado = null;
-    let DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
+    let cantidadSeleccionada = 1;
+    let escaneoEnPausa = false;
+
+    let selectorPromo = document.getElementById('select-promo');
+    let DESCUENTO_ACTUAL = parseFloat(selectorPromo.value);
 
     let mapaMemoria = JSON.parse(localStorage.getItem('changuito_ean_map') || '{}');
 
     // ==========================================
-    // SISTEMA DE SONIDOS SINTETIZADOS (Web Audio)
+    // SONIDO Y VIBRACIÓN HÁPTICA
     // ==========================================
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
 
     function initAudio() {
-      if (!audioCtx) {
-        audioCtx = new AudioCtx();
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+      if (!audioCtx) audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 
-    // Sonido Positivo: Dos notas armónicas ascendentes y limpias
     function reproducirSonidoPositivo() {
       try {
         initAudio();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-
         osc.type = 'sine';
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-
         const now = audioCtx.currentTime;
-        osc.frequency.setValueAtTime(587.33, now); // Re (D5)
-        osc.frequency.setValueAtTime(880.00, now + 0.1); // La (A5)
-
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.setValueAtTime(880.00, now + 0.1);
         gain.gain.setValueAtTime(0.2, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-
         osc.start(now);
         osc.stop(now + 0.35);
-      } catch (e) {
-        console.warn("Audio no inicializado aún:", e);
-      }
+      } catch (e) {}
+
+      if (navigator.vibrate) navigator.vibrate(50);
     }
 
-    // Sonido Negativo: Tono grave descendente
     function reproducirSonidoNegativo() {
       try {
         initAudio();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-
         osc.type = 'sawtooth';
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-
         const now = audioCtx.currentTime;
-        osc.frequency.setValueAtTime(220.00, now); // La grave (A3)
-        osc.frequency.linearRampToValueAtTime(130.81, now + 0.25); // Do grave (C3)
-
+        osc.frequency.setValueAtTime(220.00, now);
+        osc.frequency.linearRampToValueAtTime(130.81, now + 0.25);
         gain.gain.setValueAtTime(0.2, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-
         osc.start(now);
         osc.stop(now + 0.3);
-      } catch (e) {
-        console.warn("Audio no inicializado aún:", e);
-      }
+      } catch (e) {}
+
+      if (navigator.vibrate) navigator.vibrate([60, 50, 60]);
     }
 
-    // Cargar base de datos generada por Python
+    // Cargar catálogo descargado de Coto
     fetch('productos.json')
       .then(r => r.json())
       .then(data => {
@@ -151,18 +187,20 @@
       .catch(err => console.error("Error al cargar productos.json:", err));
 
     function vaciarMemoria() {
-      localStorage.removeItem('changuito_ean_map');
-      mapaMemoria = {};
-      document.getElementById('scan-result').style.display = 'none';
-      ultimoEscaneado = null;
-      alert("Memoria borrada exitosamente.");
+      if (confirm("¿Querés vaciar el changuito y los datos guardados?")) {
+        localStorage.removeItem('changuito_ean_map');
+        mapaMemoria = {};
+        changuito = [];
+        actualizarTotales();
+        reanudarEscaneo();
+      }
     }
 
     function cambiarPromo() {
-      DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
+      DESCUENTO_ACTUAL = parseFloat(selectorPromo.value);
       actualizarTotales();
       if (ultimoEscaneado && ultimoEscaneado.precioLista > 0) {
-        mostrarProducto(ultimoEscaneado.nombre, ultimoEscaneado.precioLista, ultimoEscaneado.codigo, ultimoEscaneado.fuente);
+        mostrarProducto(ultimoEscaneado.nombre, ultimoEscaneado.precioLista, ultimoEscaneado.codigo, ultimoEscaneado.fuente, false);
       }
     }
 
@@ -181,7 +219,28 @@
       return vetados.some(v => nom.includes(v));
     }
 
-    function mostrarProducto(nombre, precio, codigo, fuente = "") {
+    function pausarEscaneo() {
+      escaneoEnPausa = true;
+      try { html5QrCode.pause(); } catch(e) {}
+      document.getElementById('reader').classList.add('camara-pausada');
+    }
+
+    function reanudarEscaneo() {
+      document.getElementById('scan-result').style.display = 'none';
+      ultimoEscaneado = null;
+      cantidadSeleccionada = 1;
+      document.getElementById('cant-display').innerText = '1';
+      document.getElementById('reader').classList.remove('camara-pausada');
+      try { html5QrCode.resume(); } catch(e) {}
+      escaneoEnPausa = false;
+    }
+
+    function ajustarCantidad(cambio) {
+      cantidadSeleccionada = Math.max(1, cantidadSeleccionada + cambio);
+      document.getElementById('cant-display').innerText = cantidadSeleccionada;
+    }
+
+    function mostrarProducto(nombre, precio, codigo, fuente = "", reproducirAudio = true) {
       const esExcluido = evaluarExclusion(nombre);
       const aplica = !esExcluido && DESCUENTO_ACTUAL > 0 && precio > 0;
       const precioFinal = aplica ? precio * (1 - DESCUENTO_ACTUAL) : precio;
@@ -209,7 +268,7 @@
       if (precio > 0) {
         btnAgregar.style.display = 'block';
         manualBox.style.display = 'none';
-        reproducirSonidoPositivo();
+        if (reproducirAudio) reproducirSonidoPositivo();
 
         if (aplica) {
           badge.className = 'status-badge verde';
@@ -223,7 +282,7 @@
         manualBox.style.display = 'block';
         badge.className = 'status-badge rojo';
         badge.innerText = 'PRODUCTO SIN PRECIO';
-        reproducirSonidoNegativo();
+        if (reproducirAudio) reproducirSonidoNegativo();
       }
     }
 
@@ -235,9 +294,7 @@
           const p = data.product;
           return p.product_name_es || p.product_name || p.generic_name || null;
         }
-      } catch (e) {
-        console.warn("Error Open Food Facts:", e);
-      }
+      } catch (e) {}
       return null;
     }
 
@@ -263,6 +320,9 @@
     }
 
     async function onScanSuccess(codigoLeido) {
+      if (escaneoEnPausa) return;
+      pausarEscaneo();
+
       // 1. Prioridad absoluta al catálogo oficial de Coto
       const matchCoto = catalogo.find(p => (p.ean === codigoLeido || p.codigo === codigoLeido) && p.precio > 0);
       if (matchCoto) {
@@ -270,11 +330,11 @@
         return;
       }
 
-      // 2. Base Internacional GS1 y cruce automático con precio de Coto
+      // 2. Base Internacional + Búsqueda de precio Coto
       document.getElementById('scan-result').style.display = 'block';
-      document.getElementById('prod-nombre').innerText = "Buscando en catálogo...";
+      document.getElementById('prod-nombre').innerText = "Identificando en Coto...";
       document.getElementById('badge').className = 'status-badge amarillo';
-      document.getElementById('badge').innerText = 'IDENTIFICANDO...';
+      document.getElementById('badge').innerText = 'BUSCANDO...';
 
       const nombreInternacional = await consultarOpenFoodFacts(codigoLeido);
       if (nombreInternacional) {
@@ -285,7 +345,7 @@
         }
       }
 
-      // 3. Revisar memoria previa del teléfono
+      // 3. Memoria manual guardada en el celular
       if (mapaMemoria[codigoLeido] && mapaMemoria[codigoLeido].precio > 0) {
         const p = mapaMemoria[codigoLeido];
         mostrarProducto(p.nombre, p.precio, codigoLeido, "Memoria guardada");
@@ -298,10 +358,7 @@
     function guardarPrecioManual() {
       const val = parseFloat(document.getElementById('input-precio-manual').value);
       if (val > 0 && ultimoEscaneado) {
-        mapaMemoria[ultimoEscaneado.codigo] = {
-          nombre: ultimoEscaneado.nombre,
-          precio: val
-        };
+        mapaMemoria[ultimoEscaneado.codigo] = { nombre: ultimoEscaneado.nombre, precio: val };
         localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
         mostrarProducto(ultimoEscaneado.nombre, val, ultimoEscaneado.codigo, "Ingreso manual");
       }
@@ -309,10 +366,11 @@
 
     document.getElementById('btn-agregar').addEventListener('click', () => {
       if (ultimoEscaneado && ultimoEscaneado.precioLista > 0) {
-        changuito.push({...ultimoEscaneado});
+        for (let i = 0; i < cantidadSeleccionada; i++) {
+          changuito.push({...ultimoEscaneado});
+        }
         actualizarTotales();
-        document.getElementById('scan-result').style.display = 'none';
-        ultimoEscaneado = null;
+        reanudarEscaneo();
       }
     });
 
@@ -330,18 +388,23 @@
         pagar += item.precioFinal;
       });
 
-      let ahorro = subtotal - pagar;
+      let ahorroTotal = subtotal - pagar;
 
       document.getElementById('subtotal-gondola').innerText = `$${subtotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
-      document.getElementById('total-ahorro').innerText = `-$${ahorro.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('total-ahorro').innerText = `-$${ahorroTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
       document.getElementById('total-pagar').innerText = `$${pagar.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('cant-items-totales').innerText = `${changuito.length} artículos`;
 
       const lista = document.getElementById('lista-changuito');
+      const btnCompartir = document.getElementById('btn-compartir');
+
       if (changuito.length === 0) {
         lista.innerHTML = '<small style="color: #999;">Aún no agregaste productos.</small>';
+        btnCompartir.style.display = 'none';
         return;
       }
 
+      btnCompartir.style.display = 'block';
       lista.innerHTML = changuito.map((i, idx) => `
         <div class="item-fila">
           <div style="flex: 1;">
@@ -354,7 +417,24 @@
       `).join('');
     }
 
-    // Iniciar lector de código de barras
+    function compartirResumen() {
+      if (changuito.length === 0) return;
+      let texto = `🛒 *Mi Changuito Coto*\n`;
+      changuito.forEach((item) => {
+        texto += `• ${item.nombre}: $${item.precioFinal.toFixed(2)}\n`;
+      });
+      texto += `\n*Subtotal Góndola:* ${document.getElementById('subtotal-gondola').innerText}`;
+      texto += `\n*Ahorro Total:* ${document.getElementById('total-ahorro').innerText}`;
+      texto += `\n*Total a Pagar:* ${document.getElementById('total-pagar').innerText}`;
+
+      if (navigator.share) {
+        navigator.share({ title: 'Changuito Coto', text: texto });
+      } else {
+        navigator.clipboard.writeText(texto);
+        alert("Resumen copiado al portapapeles para pegar en WhatsApp.");
+      }
+    }
+
     const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
       { facingMode: "environment" },
