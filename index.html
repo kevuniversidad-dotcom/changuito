@@ -18,16 +18,14 @@
     .total-final { font-size: 18px; font-weight: bold; color: #111; border-top: 1px dashed #ccc; padding-top: 8px; margin-top: 8px; }
     .item-fila { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #f0f0f0; }
     .btn-borrar { background: #ff4d4f; color: white; border: none; border-radius: 4px; padding: 3px 8px; font-size: 12px; margin-left: 8px; cursor: pointer; }
-    select, input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; }
-    .manual-box { background: #fffbe6; border: 1px solid #ffe58f; padding: 12px; border-radius: 8px; margin-top: 10px; }
-    .resultados-busqueda { max-height: 180px; overflow-y: auto; margin-top: 8px; border: 1px solid #ddd; border-radius: 6px; background: #fff; }
-    .opcion-prod { padding: 8px 10px; font-size: 13px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; }
-    .opcion-prod:hover { background: #f0f7ff; }
+    select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; }
+    .btn-reset-total { width: 100%; background: #ffeef0; color: #d93025; border: 1px solid #f5c2c7; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 8px; }
   </style>
 </head>
 <body>
 
-  <!-- Selector de Promoción Activa -->
+  <button class="btn-reset-total" onclick="vaciarMemoria()">🗑️ Vaciar memoria y resetear datos guardados</button>
+
   <div class="card" style="margin-top: 0;">
     <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">BENEFICIO BANCARIO:</label>
     <select id="select-promo" onchange="cambiarPromo()">
@@ -38,30 +36,18 @@
     </select>
   </div>
 
-  <!-- Escáner Cámara -->
   <div id="reader"></div>
 
-  <!-- Resultado del Escaneo -->
   <div class="card" id="scan-result" style="display: none;">
     <span id="badge" class="status-badge"></span>
     <h3 id="prod-nombre" style="margin: 8px 0 4px 0; font-size: 16px;"></h3>
-    <div style="font-size: 13px; color: #666;">Precio Góndola: <b id="prod-precio-orig"></b></div>
+    <div style="font-size: 13px; color: #666;">Precio Góndola Coto: <b id="prod-precio-orig"></b></div>
     <div style="font-size: 15px; color: #111; margin-top: 2px;">Total con promo: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
     <div id="fuente-info" style="font-size: 11px; color: #888; margin-top: 4px;"></div>
     
-    <!-- Ajuste manual rápido si ningún método encontró precio -->
-    <div id="manual-fallback" class="manual-box" style="display: none;">
-      <small style="color: #873800; font-weight: bold; display: block; margin-bottom: 6px;">
-        Asignar precio manualmente de góndola:
-      </small>
-      <input type="number" id="input-precio-manual" placeholder="Ej: 1350">
-      <button class="btn-add" style="background:#1890ff; padding:8px;" onclick="guardarPrecioManual()">Fijar Precio</button>
-    </div>
-
     <button class="btn-add" id="btn-agregar">Agregar al Changuito</button>
   </div>
 
-  <!-- Changuito Acumulado -->
   <div class="card">
     <h3 style="margin-top: 0; font-size: 16px;">Mi Changuito</h3>
     <div class="resumen"><span>Subtotal Góndola:</span><span id="subtotal-gondola">$0,00</span></div>
@@ -79,29 +65,43 @@
     let ultimoEscaneado = null;
     let DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
 
-    // Memoria persistente en el celular
+    // Memoria interna
     let mapaMemoria = JSON.parse(localStorage.getItem('changuito_ean_map') || '{}');
 
-    // 1. Cargar archivo local de Python
+    // 1. Cargar archivo generado por Python
     fetch('productos.json')
       .then(r => r.json())
       .then(data => {
         catalogo = data;
-        console.log(`Catálogo cargado: ${catalogo.length} artículos.`);
+        console.log(`Catálogo cargado: ${catalogo.length} productos.`);
       })
-      .catch(err => console.error("Error cargando productos.json:", err));
+      .catch(err => console.error("Error al cargar productos.json:", err));
+
+    // Botón de reseteo completo
+    function vaciarMemoria() {
+      localStorage.removeItem('changuito_ean_map');
+      mapaMemoria = {};
+      document.getElementById('scan-result').style.display = 'none';
+      ultimoEscaneado = null;
+      alert("Memoria borrada exitosamente.");
+    }
 
     function cambiarPromo() {
       DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
       actualizarTotales();
-      if (ultimoEscaneado) {
+      if (ultimoEscaneado && ultimoEscaneado.precioLista > 0) {
         mostrarProducto(ultimoEscaneado.nombre, ultimoEscaneado.precioLista, ultimoEscaneado.codigo, ultimoEscaneado.fuente);
       }
     }
 
-    // Reglas de exclusión legal de bancos
+    // Normalización de texto (elimina tildes y diacríticos)
+    function normalizar(texto) {
+      return (texto || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    }
+
+    // Exclusiones bancarias oficiales
     function evaluarExclusion(nombre) {
-      const nom = nombre.toLowerCase();
+      const nom = normalizar(nombre);
       const vetados = [
         "fernet", "branca", "aperitivo", "gancia", "campari", "whisky", "vodka", "gin",
         "catena", "rutini", "chandon", "luigi bosca", "trumpeter", "bianchi", "enemigo",
@@ -113,7 +113,7 @@
 
     function mostrarProducto(nombre, precio, codigo, fuente = "") {
       const esExcluido = evaluarExclusion(nombre);
-      const aplica = !esExcluido && DESCUENTO_ACTUAL > 0;
+      const aplica = !esExcluido && DESCUENTO_ACTUAL > 0 && precio > 0;
       const precioFinal = aplica ? precio * (1 - DESCUENTO_ACTUAL) : precio;
 
       ultimoEscaneado = {
@@ -128,27 +128,30 @@
 
       document.getElementById('scan-result').style.display = 'block';
       document.getElementById('prod-nombre').innerText = nombre;
-      document.getElementById('prod-precio-orig').innerText = `$${precio.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
-      document.getElementById('prod-precio-promo').innerText = `$${precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('prod-precio-orig').innerText = precio > 0 ? `$${precio.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No encontrado';
+      document.getElementById('prod-precio-promo').innerText = precio > 0 ? `$${precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No encontrado';
       document.getElementById('fuente-info').innerText = fuente ? `Origen: ${fuente}` : '';
 
       const badge = document.getElementById('badge');
-      if (aplica) {
-        badge.className = 'status-badge verde';
-        badge.innerText = `APLICA ${(DESCUENTO_ACTUAL * 100).toFixed(0)}% OFF`;
-      } else {
-        badge.className = 'status-badge rojo';
-        badge.innerText = 'EXCLUIDO DE LA PROMO';
-      }
+      const btnAgregar = document.getElementById('btn-agregar');
 
-      if (precio === 0) {
-        document.getElementById('manual-fallback').style.display = 'block';
+      if (precio > 0) {
+        btnAgregar.style.display = 'block';
+        if (aplica) {
+          badge.className = 'status-badge verde';
+          badge.innerText = `APLICA ${(DESCUENTO_ACTUAL * 100).toFixed(0)}% OFF`;
+        } else {
+          badge.className = 'status-badge rojo';
+          badge.innerText = esExcluido ? 'EXCLUIDO DE LA PROMO' : 'PRECIO LISTA';
+        }
       } else {
-        document.getElementById('manual-fallback').style.display = 'none';
+        btnAgregar.style.display = 'none';
+        badge.className = 'status-badge rojo';
+        badge.innerText = 'PRODUCTO SIN PRECIO EN COTO';
       }
     }
 
-    // Consulta en vivo a la base internacional Open Food Facts
+    // Consulta en vivo a la base internacional para extraer el nombre por código EAN
     async function consultarOpenFoodFacts(ean) {
       try {
         const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${ean}.json`);
@@ -163,14 +166,16 @@
       return null;
     }
 
-    // Búsqueda aproximada en el catálogo local por nombre
-    function buscarPrecioEnCatalogo(nombreIdentificado) {
-      const palabras = nombreIdentificado.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    // Búsqueda inteligente en el catálogo local de Coto por coincidencia de términos
+    function buscarPrecioEnCatalogo(nombreBuscado) {
+      const palabras = normalizar(nombreBuscado).split(/\s+/).filter(w => w.length > 2);
+      if (palabras.length === 0) return null;
+
       let mejorMatch = null;
       let maxCoincidencias = 0;
 
       for (let item of catalogo) {
-        const nom = item.nombre.toLowerCase();
+        const nom = normalizar(item.nombre);
         let coincidencias = 0;
         for (let pal of palabras) {
           if (nom.includes(pal)) coincidencias++;
@@ -181,59 +186,50 @@
         }
       }
 
-      // Si coincide en al menos 2 palabras clave, tomamos ese precio de Coto
+      // Si coincide en al menos 2 palabras clave (ej: "pure" y "arcor"), lo toma automáticamente
       return maxCoincidencias >= 2 ? mejorMatch : null;
     }
 
     async function onScanSuccess(codigoLeido) {
-      // 1. Memoria previa guardada en el dispositivo
-      if (mapaMemoria[codigoLeido]) {
+      // 1. Memoria previa guardada (solo si tiene precio válido mayor a 0)
+      if (mapaMemoria[codigoLeido] && mapaMemoria[codigoLeido].precio > 0) {
         const p = mapaMemoria[codigoLeido];
         mostrarProducto(p.nombre, p.precio, codigoLeido, "Memoria local");
         return;
       }
 
-      // 2. Buscar en base de datos local de Coto por EAN
-      const encontradoCoto = catalogo.find(p => p.ean === codigoLeido);
-      if (encontradoCoto) {
-        mostrarProducto(encontradoCoto.nombre, encontradoCoto.precio, codigoLeido, "Catálogo Coto");
+      // 2. Buscar directo en catálogo Coto por EAN
+      const matchCotoDirecto = catalogo.find(p => (p.ean === codigoLeido || p.codigo === codigoLeido) && p.precio > 0);
+      if (matchCotoDirecto) {
+        mapaMemoria[codigoLeido] = { nombre: matchCotoDirecto.nombre, precio: matchCotoDirecto.precio };
+        localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
+        mostrarProducto(matchCotoDirecto.nombre, matchCotoDirecto.precio, codigoLeido, "Catálogo Coto (EAN)");
         return;
       }
 
-      // 3. Fallback: Base Internacional Open Food Facts
+      // 3. Fallback automático: buscar nombre internacional y cruzar precio de Coto
       document.getElementById('scan-result').style.display = 'block';
-      document.getElementById('prod-nombre').innerText = "Identificando en base universal...";
+      document.getElementById('prod-nombre').innerText = "Buscando en catálogo...";
       document.getElementById('badge').className = 'status-badge amarillo';
-      document.getElementById('badge').innerText = 'CONSULTANDO GS1...';
+      document.getElementById('badge').innerText = 'IDENTIFICANDO...';
+      document.getElementById('btn-agregar').style.display = 'none';
 
       const nombreInternacional = await consultarOpenFoodFacts(codigoLeido);
 
       if (nombreInternacional) {
-        // Intentar cruzar el nombre universal con la lista de precios de Coto
-        const matchPrecio = buscarPrecioEnCatalogo(nombreInternacional);
-        const precioAsignado = matchPrecio ? matchPrecio.precio : 0.0;
-        const nombreFinal = matchPrecio ? matchPrecio.nombre : nombreInternacional;
+        // Cruce automático de precio con la base de Coto
+        const matchPrecioCoto = buscarPrecioEnCatalogo(nombreInternacional);
 
-        // Guardar en memoria local
-        mapaMemoria[codigoLeido] = { nombre: nombreFinal, precio: precioAsignado };
-        localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
-
-        mostrarProducto(nombreFinal, precioAsignado, codigoLeido, matchPrecio ? "Open Food Facts + Coto" : "Open Food Facts");
+        if (matchPrecioCoto && matchPrecioCoto.precio > 0) {
+          mapaMemoria[codigoLeido] = { nombre: matchPrecioCoto.nombre, precio: matchPrecioCoto.precio };
+          localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
+          mostrarProducto(matchPrecioCoto.nombre, matchPrecioCoto.precio, codigoLeido, "Coto (Búsqueda cruzada)");
+        } else {
+          // Detectó el producto pero no está en la base actual de Coto
+          mostrarProducto(nombreInternacional, 0.0, codigoLeido, "Sin precio en catálogo Coto");
+        }
       } else {
-        // Si no se encuentra en ningún registro
-        mostrarProducto(`Código: ${codigoLeido}`, 0.0, codigoLeido, "No indexado");
-      }
-    }
-
-    function guardarPrecioManual() {
-      const val = parseFloat(document.getElementById('input-precio-manual').value);
-      if (val > 0 && ultimoEscaneado) {
-        mapaMemoria[ultimoEscaneado.codigo] = {
-          nombre: ultimoEscaneado.nombre,
-          precio: val
-        };
-        localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
-        mostrarProducto(ultimoEscaneado.nombre, val, ultimoEscaneado.codigo, "Ingreso manual");
+        mostrarProducto(`Código no catalogado: ${codigoLeido}`, 0.0, codigoLeido, "No encontrado");
       }
     }
 
@@ -243,8 +239,6 @@
         actualizarTotales();
         document.getElementById('scan-result').style.display = 'none';
         ultimoEscaneado = null;
-      } else {
-        alert("Fijá el precio del producto antes de agregarlo al changuito.");
       }
     });
 
@@ -278,7 +272,7 @@
         <div class="item-fila">
           <div style="flex: 1;">
             <div>${i.nombre}</div>
-            <small style="color: ${i.aplicaPromo ? '#00873a' : '#e02424'}">${i.aplicaPromo ? 'Aplica promo' : 'Excluido'}</small>
+            <small style="color: ${i.aplicaPromo ? '#00873a' : '#e02424'}">${i.aplicaPromo ? 'Aplica 30%' : 'Excluido'}</small>
           </div>
           <b style="margin: 0 8px;">$${i.precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</b>
           <button class="btn-borrar" onclick="borrarItem(${idx})">X</button>
@@ -291,7 +285,7 @@
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 250, height: 140 } },
       onScanSuccess
-    ).catch(err => console.error("Error al encender la cámara:", err));
+    ).catch(err => console.error("Error al iniciar la cámara:", err));
   </script>
 </body>
 </html>
