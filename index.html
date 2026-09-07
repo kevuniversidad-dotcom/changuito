@@ -58,6 +58,7 @@
 </head>
 <body>
 
+  <!-- Cabecera Oficial Coto -->
   <div class="header-coto">
     <div class="logo-container">
       <div class="coto-badge-logo">COTO</div>
@@ -69,21 +70,54 @@
     <button style="background:none; border:none; color:#d93025; font-size:11px; font-weight:bold; cursor:pointer;" onclick="vaciarMemoria()">Resetear</button>
   </div>
 
+  <!-- Selector con Todas las Promociones Oficiales de 1 Pago -->
   <div class="card" style="margin-top: 0;">
-    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">BENEFICIO BANCARIO:</label>
+    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">PROMO BANCARIA / BENEFICIO:</label>
     <select id="select-promo" onchange="cambiarPromo()">
-      <option value="0.30">Jueves: 30% Visa Débito NFC</option>
-      <option value="0.20">Finde: 20% Mercado Pago</option>
-      <option value="0.25">Viernes: 25% Mercado Pago</option>
-      <option value="0.00">Sin Descuento (Precio Góndola)</option>
+      <optgroup label="Jueves">
+        <option value="0.30" selected>Jueves: 30% Visa Débito NFC (Sin tope)</option>
+        <option value="0.30">Jueves: 30% Banco Columbia (Crédito)</option>
+        <option value="0.25">Jueves: 25% ICBC Plan Sueldo</option>
+        <option value="0.20">Jueves: 20% ICBC Débito General</option>
+      </optgroup>
+      <optgroup label="Lunes">
+        <option value="0.30">Lunes: 30% Banco Credicoop MODO Cabal</option>
+        <option value="0.25">Lunes: 25% Banco Ciudad (MODO / Crédito)</option>
+      </optgroup>
+      <optgroup label="Martes">
+        <option value="0.30">Martes: 30% MODO General / Banco Comafi</option>
+        <option value="0.25">Martes: 25% Banco Supervielle MODO</option>
+        <option value="0.20">Martes: 20% Tarjeta Naranja X</option>
+      </optgroup>
+      <optgroup label="Miércoles">
+        <option value="0.15">Miércoles: 15% Comunidad COTO (DNI en caja)</option>
+      </optgroup>
+      <optgroup label="Viernes">
+        <option value="0.25">Viernes: 25% Mercado Pago QR (Sin tope)</option>
+        <option value="0.15">Viernes: 15% Tarjetas Débito Generales</option>
+      </optgroup>
+      <optgroup label="Fin de Semana (Sáb y Dom)">
+        <option value="0.40">Finde: 40% Banco Credicoop Plan Sueldo</option>
+        <option value="0.30">Finde: 30% Banco Credicoop Cabal</option>
+        <option value="0.20">Finde: 20% Banco Ciudad Débito</option>
+        <option value="0.20">Finde: 20% ICBC Crédito</option>
+      </optgroup>
+      <optgroup label="Planes Especiales y Base">
+        <option value="0.10">Lun a Jue: 10% Beneficio ANSES</option>
+        <option value="0.15">Mar y Jue: 15% Ciudadanía Porteña</option>
+        <option value="0.00">Sin Descuento (Precio Góndola)</option>
+      </optgroup>
     </select>
   </div>
 
+  <!-- Escáner Cámara -->
   <div id="reader"></div>
 
+  <!-- Tarjeta de Producto Detectado -->
   <div class="card" id="scan-result" style="display: none;">
     <span id="badge" class="status-badge"></span>
 
+    <!-- Bloque Visual: Foto + Nombre -->
     <div class="prod-header-box">
       <img id="prod-img" class="prod-thumb" src="" alt="Foto Producto" style="display: none;">
       <div id="prod-no-img" class="prod-thumb-placeholder">📦</div>
@@ -93,6 +127,7 @@
       </div>
     </div>
     
+    <!-- Fila de Precio Góndola Editable -->
     <div class="fila-precio-editable">
       <span>Precio Góndola Unitario: <b id="prod-precio-orig"></b></span>
       <button class="btn-editar-precio" onclick="abrirModalPrecio()">✏️ Corregir</button>
@@ -102,6 +137,7 @@
       Total c/u con promo: <b id="prod-precio-promo" style="color:#00873a;"></b>
     </div>
 
+    <!-- Multiplicador de Unidades -->
     <div class="selector-cantidad">
       <button class="btn-qty" onclick="ajustarCantidad(-1)">-</button>
       <span class="qty-numero" id="cant-display">1</span>
@@ -120,6 +156,7 @@
     <button class="btn-cancel" onclick="reanudarEscaneo()">🔄 Escanear otro producto</button>
   </div>
 
+  <!-- Changuito Acumulado -->
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <h3 style="margin: 0; font-size: 16px;">Mi Changuito</h3>
@@ -137,6 +174,7 @@
     <button class="btn-compartir" id="btn-compartir" style="display:none;" onclick="compartirResumen()">📲 Compartir resumen / WhatsApp</button>
   </div>
 
+  <!-- MODAL CON TECLADO NUMÉRICO DIRECTO -->
   <div id="modal-precio" class="modal-overlay">
     <div class="modal-box">
       <h4 style="margin: 0 0 6px 0; font-size: 16px; text-align: center;">Corregir Precio de Góndola</h4>
@@ -219,7 +257,7 @@
       if (navigator.vibrate) navigator.vibrate([60, 50, 60]);
     }
 
-    // Carga de catálogo
+    // Carga de catálogo Coto
     fetch('productos.json')
       .then(r => r.json())
       .then(data => {
@@ -257,17 +295,57 @@
       return (texto || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     }
 
-    // Exclusiones bancarias oficiales (incluye aceites, harinas, azúcares, gaseosas, bebidas alcohólicas)
+    // ==========================================
+    // MOTOR COMPLETO DE EXCLUSIONES LEGALES COTO
+    // ==========================================
     function evaluarExclusion(nombre) {
       const nom = normalizar(nombre);
-      const vetados = [
-        "aceite", "harina", "azucar", "azúcar",
-        "fernet", "branca", "aperitivo", "gancia", "campari", "whisky", "vodka", "gin",
-        "catena", "rutini", "chandon", "luigi bosca", "trumpeter", "bianchi", "enemigo",
-        "bodega", "espumante", "champagne", "licor", "coca-cola", "sprite", "fanta",
-        "aquarius", "schweppes", "monster", "cepita", "ades"
+
+      // 1. Aceites: Girasol y Mezcla quedan excluidos (Oliva permitido)
+      if (nom.includes("aceite")) {
+        if (nom.includes("girasol") || nom.includes("mezcla") || nom.includes("soja") || (!nom.includes("oliva") && !nom.includes("coco") && !nom.includes("uva"))) {
+          return true;
+        }
+      }
+
+      // 2. Canasta básica, carnicería y frescos
+      const canastaExcluida = [
+        "harina", "azucar", "azúcar",
+        "novillo", "novillito", "ternera", "menudencia", "pollo entero", "pollo trozado"
       ];
-      return vetados.some(v => nom.includes(v));
+      if (canastaExcluida.some(v => nom.includes(v))) return true;
+
+      // Leches infantiles etapas 1 y 2
+      if (nom.includes("infantil") && (nom.includes("etapa 1") || nom.includes("etapa 2") || nom.includes("etapa 1y2"))) {
+        return true;
+      }
+
+      // 3. Línea Coca-Cola Company
+      const lineaCoca = [
+        "coca-cola", "coca cola", "sprite", "fanta", "schweppes", "crush",
+        "aquarius", "smartwater", "cepita", "benedictino", "powerade", "ades", "hi-c", "monster"
+      ];
+      if (lineaCoca.some(v => nom.includes(v))) return true;
+
+      // 4. Bodegas y vinos premium
+      const bodegasExcluidas = [
+        "catena zapata", "nicola catena", "ernesto catena", "alma negra", "padrillos", "animal", "enemigo", "gran enemigo",
+        "dv catena", "saint felicien", "nicasia", "tilia", "luigi bosca", "leoncio arizu",
+        "rutini", "trumpeter", "san felipe", "chandon", "terrazas de los andes", "latitud 33", "altos del plata", "valmont", "cheval",
+        "lote negro", "quorum vi", "privada family", "cadus", "casa pirque", "altaland", "la posta", "luca", "aruma", "petit caro",
+        "cuchillo de palo", "beso de dante", "maria carmen", "maría carmen", "enzo bianchi", "particular bianchi", "iv generacion", "iv generación",
+        "festivo", "petite fleur", "tetrabrik", "generoso"
+      ];
+      if (bodegasExcluidas.some(v => nom.includes(v))) return true;
+
+      // 5. Champagnes y Bebidas Blancas / Destilados
+      const destiladosExcluidos = [
+        "mercier", "baron b", "barón b", "dom perignon", "pommery", "moet chandon", "möet chandon", "la grande dame", "krug",
+        "fernet", "branca", "campari", "gancia", "whisky", "vodka", "gin", "licor", "johnnie walker"
+      ];
+      if (destiladosExcluidos.some(v => nom.includes(v))) return true;
+
+      return false;
     }
 
     function pausarEscaneo() {
@@ -328,7 +406,6 @@
       const btnAgregar = document.getElementById('btn-agregar');
       const manualBox = document.getElementById('manual-fallback');
 
-      // Estado del Badge de la Promoción
       if (esExcluido) {
         badge.className = 'status-badge rojo';
         badge.innerText = 'EXCLUIDO DE LA PROMO';
@@ -348,7 +425,6 @@
           else reproducirSonidoNegativo();
         }
       } else {
-        // No tiene precio cargado en la base
         btnAgregar.style.display = 'none';
         manualBox.style.display = 'block';
         badge.innerText += ' - SIN PRECIO';
@@ -388,7 +464,6 @@
       }
     }
 
-    // Consulta con Timeout de 1.2 segundos para que no se quede colgado
     async function consultarOpenFoodFactsConTimeout(ean) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1200);
@@ -406,9 +481,7 @@
           
           return { nombre: nombreCompleto.trim(), foto: foto };
         }
-      } catch (e) {
-        // Si tarda o falla el fetch, aborta silenciosamente
-      }
+      } catch (e) {}
       return null;
     }
 
@@ -437,21 +510,21 @@
       if (escaneoEnPausa) return;
       pausarEscaneo();
 
-      // 1. Revisar si ya está en la memoria del celular
+      // 1. Memoria previa del celular
       if (mapaMemoria[codigoLeido] && mapaMemoria[codigoLeido].precio > 0) {
         const p = mapaMemoria[codigoLeido];
         mostrarProducto(p.nombre, p.precio, codigoLeido, "Memoria guardada", p.foto || "");
         return;
       }
 
-      // 2. Revisar si está en el catálogo local de Coto por EAN directo
+      // 2. Catálogo local de Coto por EAN
       const matchCotoDirecto = catalogo.find(p => (p.ean === codigoLeido || p.codigo === codigoLeido));
       if (matchCotoDirecto) {
         mostrarProducto(matchCotoDirecto.nombre, matchCotoDirecto.precio || 0, codigoLeido, "Catálogo Coto", "");
         return;
       }
 
-      // 3. Buscar en base universal con timeout rápido
+      // 3. Base universal con timeout
       const infoInternacional = await consultarOpenFoodFactsConTimeout(codigoLeido);
 
       if (infoInternacional && infoInternacional.nombre) {
@@ -469,7 +542,7 @@
         return;
       }
 
-      // 4. Si no se encontró en ninguna base, solicitar precio de inmediato
+      // 4. Si no tiene datos
       mostrarProducto(`Artículo (${codigoLeido})`, 0.0, codigoLeido, "Código sin registrar", "");
     }
 
