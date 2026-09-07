@@ -70,44 +70,27 @@
     <button style="background:none; border:none; color:#d93025; font-size:11px; font-weight:bold; cursor:pointer;" onclick="vaciarMemoria()">Resetear</button>
   </div>
 
-  <!-- Selector con Todas las Promociones Oficiales de 1 Pago -->
+  <!-- SELECTORES DINÁMICOS EN CASCADA: DÍA Y BENEFICIO -->
   <div class="card" style="margin-top: 0;">
-    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">PROMO BANCARIA / BENEFICIO:</label>
-    <select id="select-promo" onchange="cambiarPromo()">
-      <optgroup label="Jueves">
-        <option value="0.30" selected>Jueves: 30% Visa Débito NFC (Sin tope)</option>
-        <option value="0.30">Jueves: 30% Banco Columbia (Crédito)</option>
-        <option value="0.25">Jueves: 25% ICBC Plan Sueldo</option>
-        <option value="0.20">Jueves: 20% ICBC Débito General</option>
-      </optgroup>
-      <optgroup label="Lunes">
-        <option value="0.30">Lunes: 30% Banco Credicoop MODO Cabal</option>
-        <option value="0.25">Lunes: 25% Banco Ciudad (MODO / Crédito)</option>
-      </optgroup>
-      <optgroup label="Martes">
-        <option value="0.30">Martes: 30% MODO General / Banco Comafi</option>
-        <option value="0.25">Martes: 25% Banco Supervielle MODO</option>
-        <option value="0.20">Martes: 20% Tarjeta Naranja X</option>
-      </optgroup>
-      <optgroup label="Miércoles">
-        <option value="0.15">Miércoles: 15% Comunidad COTO (DNI en caja)</option>
-      </optgroup>
-      <optgroup label="Viernes">
-        <option value="0.25">Viernes: 25% Mercado Pago QR (Sin tope)</option>
-        <option value="0.15">Viernes: 15% Tarjetas Débito Generales</option>
-      </optgroup>
-      <optgroup label="Fin de Semana (Sáb y Dom)">
-        <option value="0.40">Finde: 40% Banco Credicoop Plan Sueldo</option>
-        <option value="0.30">Finde: 30% Banco Credicoop Cabal</option>
-        <option value="0.20">Finde: 20% Banco Ciudad Débito</option>
-        <option value="0.20">Finde: 20% ICBC Crédito</option>
-      </optgroup>
-      <optgroup label="Planes Especiales y Base">
-        <option value="0.10">Lun a Jue: 10% Beneficio ANSES</option>
-        <option value="0.15">Mar y Jue: 15% Ciudadanía Porteña</option>
-        <option value="0.00">Sin Descuento (Precio Góndola)</option>
-      </optgroup>
-    </select>
+    <div style="margin-bottom: 8px;">
+      <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">📅 SELECCIONAR DÍA:</label>
+      <select id="select-dia" onchange="actualizarPromosPorDia()">
+        <option value="jueves">Jueves</option>
+        <option value="lunes">Lunes</option>
+        <option value="martes">Martes</option>
+        <option value="miercoles">Miércoles</option>
+        <option value="viernes">Viernes</option>
+        <option value="finde">Sábado y Domingo</option>
+        <option value="todos">Todos los días / Planes</option>
+      </select>
+    </div>
+
+    <div>
+      <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">💳 BENEFICIO BANCARIO:</label>
+      <select id="select-promo" onchange="cambiarPromo()">
+        <!-- Se rellena automáticamente según el día elegido -->
+      </select>
+    </div>
   </div>
 
   <!-- Escáner Cámara -->
@@ -201,10 +184,87 @@
     let cantidadSeleccionada = 1;
     let escaneoEnPausa = false;
 
-    let selectorPromo = document.getElementById('select-promo');
-    let DESCUENTO_ACTUAL = parseFloat(selectorPromo.value);
+    // BASE DE PROMOCIONES POR DÍA OFICIAL DE COTO
+    const PROMOS_DATA = {
+      jueves: [
+        { valor: 0.30, texto: "30% Visa Débito NFC (Sin tope en caja)" },
+        { valor: 0.30, texto: "30% Banco Columbia (Crédito)" },
+        { valor: 0.25, texto: "25% ICBC Plan Sueldo" },
+        { valor: 0.20, texto: "20% ICBC Débito General" },
+        { valor: 0.15, texto: "15% Ciudadanía Porteña" },
+        { valor: 0.10, texto: "10% Beneficio ANSES" },
+        { valor: 0.00, texto: "Sin Descuento (Precio Góndola)" }
+      ],
+      lunes: [
+        { valor: 0.30, texto: "30% Banco Credicoop MODO Cabal" },
+        { valor: 0.25, texto: "25% Banco Ciudad (MODO / Crédito)" },
+        { valor: 0.10, texto: "10% Beneficio ANSES" },
+        { valor: 0.00, texto: "Sin Descuento (Precio Góndola)" }
+      ],
+      martes: [
+        { valor: 0.30, texto: "30% MODO General / Banco Comafi" },
+        { valor: 0.25, texto: "25% Banco Supervielle MODO" },
+        { valor: 0.20, texto: "20% Tarjeta Naranja X" },
+        { valor: 0.15, texto: "15% Ciudadanía Porteña" },
+        { valor: 0.10, texto: "10% Beneficio ANSES" },
+        { valor: 0.00, texto: "Sin Descuento (Precio Góndola)" }
+      ],
+      miercoles: [
+        { valor: 0.15, texto: "15% Comunidad COTO (DNI en caja)" },
+        { valor: 0.10, texto: "10% Beneficio ANSES" },
+        { valor: 0.00, texto: "Sin Descuento (Precio Góndola)" }
+      ],
+      viernes: [
+        { valor: 0.25, texto: "25% Mercado Pago QR (Sin tope)" },
+        { valor: 0.15, texto: "15% Tarjetas de Débito Generales" },
+        { valor: 0.00, texto: "Sin Descuento (Precio Góndola)" }
+      ],
+      finde: [
+        { valor: 0.40, texto: "40% Banco Credicoop Plan Sueldo (Sáb, Dom y Lun)" },
+        { valor: 0.30, texto: "30% Banco Credicoop Cabal MODO" },
+        { valor: 0.20, texto: "20% Banco Ciudad Débito" },
+        { valor: 0.20, texto: "20% ICBC Crédito" },
+        { valor: 0.00, texto: "Sin Descuento (Precio Góndola)" }
+      ],
+      todos: [
+        { valor: 0.10, texto: "10% Beneficio ANSES (Lun a Jue)" },
+        { valor: 0.15, texto: "15% Tarjeta COTO TCI" },
+        { valor: 0.00, texto: "Sin Descuento (Precio Góndola)" }
+      ]
+    };
 
+    let DESCUENTO_ACTUAL = 0.30;
     let mapaMemoria = JSON.parse(localStorage.getItem('changuito_ean_map') || '{}');
+
+    // Inicializar día y selector
+    function inicializarDiaActual() {
+      const diaNum = new Date().getDay(); // 0 = Domingo, 1 = Lunes, etc.
+      const mapaDias = {
+        0: 'finde',
+        1: 'lunes',
+        2: 'martes',
+        3: 'miercoles',
+        4: 'jueves',
+        5: 'viernes',
+        6: 'finde'
+      };
+
+      const diaKey = mapaDias[diaNum] || 'jueves';
+      document.getElementById('select-dia').value = diaKey;
+      actualizarPromosPorDia();
+    }
+
+    function actualizarPromosPorDia() {
+      const diaElegido = document.getElementById('select-dia').value;
+      const selectPromo = document.getElementById('select-promo');
+      const opciones = PROMOS_DATA[diaElegido] || PROMOS_DATA['jueves'];
+
+      selectPromo.innerHTML = opciones.map((opt, idx) => `
+        <option value="${opt.valor}" ${idx === 0 ? 'selected' : ''}>${opt.texto}</option>
+      `).join('');
+
+      cambiarPromo();
+    }
 
     // ==========================================
     // AUDIO Y FEEDBACK HÁPTICO
@@ -277,7 +337,7 @@
     }
 
     function cambiarPromo() {
-      DESCUENTO_ACTUAL = parseFloat(selectorPromo.value);
+      DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
       
       changuito.forEach(item => {
         item.aplicaPromo = !item.excluido && DESCUENTO_ACTUAL > 0;
@@ -295,13 +355,11 @@
       return (texto || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     }
 
-    // ==========================================
-    // MOTOR COMPLETO DE EXCLUSIONES LEGALES COTO
-    // ==========================================
+    // EXCLUSIONES OFICIALES COTO
     function evaluarExclusion(nombre) {
       const nom = normalizar(nombre);
 
-      // 1. Aceites: Girasol y Mezcla quedan excluidos (Oliva permitido)
+      // 1. Aceites: Girasol y Mezcla excluidos (Oliva permitido)
       if (nom.includes("aceite")) {
         if (nom.includes("girasol") || nom.includes("mezcla") || nom.includes("soja") || (!nom.includes("oliva") && !nom.includes("coco") && !nom.includes("uva"))) {
           return true;
@@ -315,7 +373,7 @@
       ];
       if (canastaExcluida.some(v => nom.includes(v))) return true;
 
-      // Leches infantiles etapas 1 y 2
+      // Leches infantiles
       if (nom.includes("infantil") && (nom.includes("etapa 1") || nom.includes("etapa 2") || nom.includes("etapa 1y2"))) {
         return true;
       }
@@ -338,7 +396,7 @@
       ];
       if (bodegasExcluidas.some(v => nom.includes(v))) return true;
 
-      // 5. Champagnes y Bebidas Blancas / Destilados
+      // 5. Destilados y espumantes
       const destiladosExcluidos = [
         "mercier", "baron b", "barón b", "dom perignon", "pommery", "moet chandon", "möet chandon", "la grande dame", "krug",
         "fernet", "branca", "campari", "gancia", "whisky", "vodka", "gin", "licor", "johnnie walker"
@@ -369,10 +427,12 @@
       document.getElementById('cant-display').innerText = cantidadSeleccionada;
     }
 
+    // MOSTRAR PRODUCTO CON EVALUACIÓN DE PROMO INDEPENDIENTE DEL PRECIO
     function mostrarProducto(nombre, precio, codigo, fuente = "", fotoUrl = "", reproducirAudio = true) {
       const esExcluido = evaluarExclusion(nombre);
-      const aplica = !esExcluido && DESCUENTO_ACTUAL > 0 && precio > 0;
-      const precioFinal = aplica ? precio * (1 - DESCUENTO_ACTUAL) : precio;
+      const tienePromoActiva = DESCUENTO_ACTUAL > 0;
+      const aplica = !esExcluido && tienePromoActiva;
+      const precioFinal = (aplica && precio > 0) ? precio * (1 - DESCUENTO_ACTUAL) : precio;
 
       ultimoEscaneado = {
         codigo: codigo,
@@ -387,8 +447,8 @@
 
       document.getElementById('scan-result').style.display = 'block';
       document.getElementById('prod-nombre').innerText = nombre;
-      document.getElementById('prod-precio-orig').innerText = precio > 0 ? `$${precio.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No fijado';
-      document.getElementById('prod-precio-promo').innerText = precio > 0 ? `$${precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No fijado';
+      document.getElementById('prod-precio-orig').innerText = precio > 0 ? `$${precio.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'Sin precio';
+      document.getElementById('prod-precio-promo').innerText = precio > 0 ? `$${precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'Sin precio';
       document.getElementById('fuente-info').innerText = fuente ? `Origen: ${fuente}` : '';
 
       const imgEl = document.getElementById('prod-img');
@@ -406,6 +466,7 @@
       const btnAgregar = document.getElementById('btn-agregar');
       const manualBox = document.getElementById('manual-fallback');
 
+      // 1. Evaluación del estado de la promo (se muestra verde incluso si precio = 0)
       if (esExcluido) {
         badge.className = 'status-badge rojo';
         badge.innerText = 'EXCLUIDO DE LA PROMO';
@@ -413,10 +474,11 @@
         badge.className = 'status-badge verde';
         badge.innerText = `APLICA ${(DESCUENTO_ACTUAL * 100).toFixed(0)}% OFF`;
       } else {
-        badge.className = 'status-badge rojo';
-        badge.innerText = 'PRECIO LISTA (SIN BENEFICIO)';
+        badge.className = 'status-badge amarillo';
+        badge.innerText = 'PRECIO LISTA (SIN DESCUENTO)';
       }
 
+      // 2. Control de disponibilidad de precio
       if (precio > 0) {
         btnAgregar.style.display = 'block';
         manualBox.style.display = 'none';
@@ -427,7 +489,6 @@
       } else {
         btnAgregar.style.display = 'none';
         manualBox.style.display = 'block';
-        badge.innerText += ' - SIN PRECIO';
         if (reproducirAudio) reproducirSonidoNegativo();
       }
     }
@@ -640,6 +701,9 @@
         alert("Resumen copiado al portapapeles para pegar en WhatsApp.");
       }
     }
+
+    // Iniciar día y cámara
+    inicializarDiaActual();
 
     const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
