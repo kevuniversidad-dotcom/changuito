@@ -1,191 +1,366 @@
-# ==============================================================================
-# 1. INSTALACIÓN DE DEPENDENCIAS EN COLAB
-# ==============================================================================
-!pip install -q playwright nest-asyncio
-!playwright install chromium
-!playwright install-deps
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Changuito Coto</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 12px; background: #f4f5f7; color: #1c1e21; }
+    #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .card { background: white; padding: 14px; border-radius: 12px; margin-top: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .status-badge { display: inline-block; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; text-transform: uppercase; }
+    .verde { background: #e6f7ec; color: #00873a; border: 1px solid #a3e6b9; }
+    .rojo { background: #fde8e8; color: #e02424; border: 1px solid #f8b4b4; }
+    .amarillo { background: #fffbe6; color: #d48806; border: 1px solid #ffe58f; }
+    .btn-add { width: 100%; background: #00873a; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+    .resumen { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
+    .total-final { font-size: 18px; font-weight: bold; color: #111; border-top: 1px dashed #ccc; padding-top: 8px; margin-top: 8px; }
+    .item-fila { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #f0f0f0; }
+    .btn-borrar { background: #ff4d4f; color: white; border: none; border-radius: 4px; padding: 3px 8px; font-size: 12px; margin-left: 8px; cursor: pointer; }
+    select, input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; box-sizing: border-box; }
+    .btn-reset-total { width: 100%; background: #ffeef0; color: #d93025; border: 1px solid #f5c2c7; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 8px; }
+    .manual-box { background: #fffbe6; border: 1px solid #ffe58f; padding: 12px; border-radius: 8px; margin-top: 10px; }
+  </style>
+</head>
+<body>
 
-# ==============================================================================
-# 2. SCRAPER CON EXTRACCIÓN QUIRÚRGICA DE PRECIO Y REINTENTOS
-# ==============================================================================
-import asyncio
-import json
-import re
-from google.colab import files
-import nest_asyncio
-from playwright.async_api import async_playwright
+  <button class="btn-reset-total" onclick="vaciarMemoria()">🗑️ Vaciar memoria y resetear datos guardados</button>
 
-nest_asyncio.apply()
+  <div class="card" style="margin-top: 0;">
+    <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">BENEFICIO BANCARIO:</label>
+    <select id="select-promo" onchange="cambiarPromo()">
+      <option value="0.30">Jueves: 30% Visa Débito NFC</option>
+      <option value="0.20">Finde: 20% Mercado Pago</option>
+      <option value="0.25">Viernes: 25% Mercado Pago</option>
+      <option value="0.00">Sin Descuento (Precio Lista)</option>
+    </select>
+  </div>
 
-# Subcategorías principales de Coto
-SUBCATEGORIAS = [
-    "salsas-y-pure-de-tomate", "golosinas", "panaderia", "snacks", "cereales",
-    "endulzantes", "aderezos-y-salsas", "infusiones", "conservas", "harinas",
-    "encurtidos", "mermeladas-y-dulces", "aceites-y-condimentos", "arroz-y-legumbres",
-    "pasta-seca-lista-y-rellenas", "rebozador-y-pan-rallado", "lacteos", "fiambres",
-    "quesos", "pastas-frescas-y-tapas", "frutas-y-verduras", "huevos", "carniceria",
-    "pescaderia", "aves", "aguas", "gaseosas", "jugos", "cervezas", "congelados",
-    "cuidado-de-la-ropa", "limpieza-de-cocina", "limpieza-de-bano",
-    "papeles-higienicos-y-rollos-de-cocina", "desodorantes-de-ambiente",
-    "cuidado-del-cabello", "cuidado-oral", "jabones", "desodorantes-corporales"
-]
+  <div id="reader"></div>
 
-async def extraer_articulos_con_reintento(page, url, reintentos_max=3):
-    """Reintenta si hay demoras de red y devuelve artículos junto al total de páginas."""
-    for intento in range(1, reintentos_max + 1):
-        try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-            await page.wait_for_timeout(2000)
+  <div class="card" id="scan-result" style="display: none;">
+    <span id="badge" class="status-badge"></span>
+    <h3 id="prod-nombre" style="margin: 8px 0 4px 0; font-size: 16px;"></h3>
+    <div style="font-size: 13px; color: #666;">Precio Góndola Coto: <b id="prod-precio-orig"></b></div>
+    <div style="font-size: 15px; color: #111; margin-top: 2px;">Total con promo: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
+    <div id="fuente-info" style="font-size: 11px; color: #888; margin-top: 4px;"></div>
+    
+    <div id="manual-fallback" class="manual-box" style="display: none;">
+      <small style="color: #873800; font-weight: bold; display: block; margin-bottom: 6px;">
+        Asignar precio manualmente:
+      </small>
+      <input type="number" id="input-precio-manual" placeholder="Ej: 1110">
+      <button class="btn-add" style="background:#1890ff; padding:8px;" onclick="guardarPrecioManual()">Fijar Precio</button>
+    </div>
 
-            data = await page.evaluate("""
-                () => {
-                    const items = [];
-                    const links = Array.from(document.querySelectorAll('a[href*="/productos/"]'));
-                    const procesados = new Set();
+    <button class="btn-add" id="btn-agregar">Agregar al Changuito</button>
+  </div>
 
-                    for (let a of links) {
-                        const href = a.getAttribute('href');
-                        if (!href || href.endsWith('/productos/') || procesados.has(href)) continue;
+  <div class="card">
+    <h3 style="margin-top: 0; font-size: 16px;">Mi Changuito</h3>
+    <div class="resumen"><span>Subtotal Góndola:</span><span id="subtotal-gondola">$0,00</span></div>
+    <div class="resumen" style="color: #00873a;"><span>Ahorro total:</span><span id="total-ahorro">-$0,00</span></div>
+    <div class="resumen total-final"><span>Total a pagar:</span><span id="total-pagar">$0,00</span></div>
+    
+    <div id="lista-changuito" style="margin-top: 12px;">
+      <small style="color: #999;">Aún no agregaste productos.</small>
+    </div>
+  </div>
 
-                        let card = a.closest('article') || a.closest('li') || a.parentElement;
-                        while (card && !card.innerText.includes('$') && card.parentElement && card.tagName !== 'BODY') {
-                            card = card.parentElement;
-                        }
+  <script>
+    let catalogo = [];
+    let changuito = [];
+    let ultimoEscaneado = null;
+    let DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
 
-                        if (card && card.innerText.includes('$')) {
-                            procesados.add(href);
-                            const tituloEl = card.querySelector('h2, h3, h4') || a;
+    let mapaMemoria = JSON.parse(localStorage.getItem('changuito_ean_map') || '{}');
 
-                            // Búsqueda de EAN en código o texto visible
-                            let ean = '';
-                            const match779 = card.innerHTML.match(/779\d{10}/);
-                            if (match779) {
-                                ean = match779[0];
-                            } else {
-                                const matchGen = card.innerText.match(/(?:EAN|GTIN|CODIGO)[:\s\-]*([0-9]{8,14})/i);
-                                if (matchGen) ean = matchGen[1];
-                            }
+    // ==========================================
+    // SISTEMA DE SONIDOS SINTETIZADOS (Web Audio)
+    // ==========================================
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
 
-                            const matchR = href.match(/R-(\d+)/);
-                            const codEnlace = matchR ? matchR[1] : '';
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new AudioCtx();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
 
-                            items.push({
-                                nombre: tituloEl ? tituloEl.innerText.trim() : a.innerText.trim(),
-                                texto: card.innerText,
-                                ean: ean || codEnlace
-                            });
-                        }
-                    }
+    // Sonido Positivo: Dos notas armónicas ascendentes y limpias
+    function reproducirSonidoPositivo() {
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
 
-                    // Detección automática del número máximo de páginas
-                    let maxPag = 1;
-                    const pagBtns = Array.from(document.querySelectorAll('ul.pagination li, div[class*="pagination"] button, a[href*="page="]'));
-                    for (let btn of pagBtns) {
-                        const num = parseInt(btn.innerText.trim(), 10);
-                        if (!isNaN(num) && num > maxPag && num < 100) {
-                            maxPag = num;
-                        }
-                    }
+        osc.type = 'sine';
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
 
-                    return { items, maxPag };
-                }
-            """)
+        const now = audioCtx.currentTime;
+        osc.frequency.setValueAtTime(587.33, now); // Re (D5)
+        osc.frequency.setValueAtTime(880.00, now + 0.1); // La (A5)
 
-            if data and len(data["items"]) > 0:
-                return data["items"], data["maxPag"]
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
 
-        except Exception:
-            if intento < reintentos_max:
-                await asyncio.sleep(3)
+        osc.start(now);
+        osc.stop(now + 0.35);
+      } catch (e) {
+        console.warn("Audio no inicializado aún:", e);
+      }
+    }
 
-    return [], 1
+    // Sonido Negativo: Tono grave descendente
+    function reproducirSonidoNegativo() {
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
 
-async def main():
-    print("Iniciando navegador Chromium...")
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            locale="es-AR",
-            timezone_id="America/Argentina/Buenos_Aires"
-        )
-        page = await context.new_page()
+        osc.type = 'sawtooth';
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
 
-        total_crudo = []
-        for subcat in SUBCATEGORIAS:
-            print(f"\nExplorando categoría: {subcat}")
-            num_pag = 1
-            total_paginas_estimadas = 1
+        const now = audioCtx.currentTime;
+        osc.frequency.setValueAtTime(220.00, now); // La grave (A3)
+        osc.frequency.linearRampToValueAtTime(130.81, now + 0.25); // Do grave (C3)
 
-            while num_pag <= total_paginas_estimadas:
-                url = f"https://www.coto.com.ar/productos/{subcat}?page={num_pag}"
-                items, max_pag = await extraer_articulos_con_reintento(page, url)
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
 
-                if max_pag > total_paginas_estimadas:
-                    total_paginas_estimadas = max_pag
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } catch (e) {
+        console.warn("Audio no inicializado aún:", e);
+      }
+    }
 
-                if not items:
-                    print(f"  Pág. {num_pag}: Sin productos.")
-                else:
-                    print(f"  Pág. {num_pag}/{total_paginas_estimadas}: {len(items)} productos.")
-                    total_crudo.extend(items)
+    // Cargar base de datos generada por Python
+    fetch('productos.json')
+      .then(r => r.json())
+      .then(data => {
+        catalogo = data;
+        console.log(`Catálogo cargado: ${catalogo.length} productos.`);
+      })
+      .catch(err => console.error("Error al cargar productos.json:", err));
 
-                num_pag += 1
-                await asyncio.sleep(1)
+    function vaciarMemoria() {
+      localStorage.removeItem('changuito_ean_map');
+      mapaMemoria = {};
+      document.getElementById('scan-result').style.display = 'none';
+      ultimoEscaneado = null;
+      alert("Memoria borrada exitosamente.");
+    }
 
-        await browser.close()
-        return total_crudo
+    function cambiarPromo() {
+      DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
+      actualizarTotales();
+      if (ultimoEscaneado && ultimoEscaneado.precioLista > 0) {
+        mostrarProducto(ultimoEscaneado.nombre, ultimoEscaneado.precioLista, ultimoEscaneado.codigo, ultimoEscaneado.fuente);
+      }
+    }
 
-print("Iniciando extracción masiva de catálogo...")
-datos = asyncio.run(main())
+    function normalizar(texto) {
+      return (texto || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    }
 
-# ==============================================================================
-# 3. PARSEO ESTRICTO: SOLO EAN, NOMBRE Y PRECIO DE VENTA FINAL
-# ==============================================================================
-catalogo_final = []
-vistos = set()
+    function evaluarExclusion(nombre) {
+      const nom = normalizar(nombre);
+      const vetados = [
+        "fernet", "branca", "aperitivo", "gancia", "campari", "whisky", "vodka", "gin",
+        "catena", "rutini", "chandon", "luigi bosca", "trumpeter", "bianchi", "enemigo",
+        "bodega", "espumante", "champagne", "licor", "coca-cola", "sprite", "fanta",
+        "aquarius", "schweppes", "monster", "cepita", "ades", "harina", "azucar", "aceite"
+      ];
+      return vetados.some(v => nom.includes(v));
+    }
 
-for item in datos:
-    nombre = item['nombre']
-    if not nombre or nombre in vistos:
-        continue
-    vistos.add(nombre)
+    function mostrarProducto(nombre, precio, codigo, fuente = "") {
+      const esExcluido = evaluarExclusion(nombre);
+      const aplica = !esExcluido && DESCUENTO_ACTUAL > 0 && precio > 0;
+      const precioFinal = aplica ? precio * (1 - DESCUENTO_ACTUAL) : precio;
 
-    # Filtrar solo la línea que contiene el precio directo (ignora x kilo / sin impuestos)
-    lineas = item['texto'].split('\n')
-    precio_num = 0.0
+      ultimoEscaneado = {
+        codigo: codigo,
+        nombre: nombre,
+        precioLista: precio,
+        precioFinal: precioFinal,
+        excluido: esExcluido,
+        aplicaPromo: aplica,
+        fuente: fuente
+      };
 
-    for linea in lineas:
-        linea_limpia = linea.strip().lower()
-        if any(descarte in linea_limpia for descarte in ["por 1", "por kilo", "sin impuestos", "regular"]):
-            continue
+      document.getElementById('scan-result').style.display = 'block';
+      document.getElementById('prod-nombre').innerText = nombre;
+      document.getElementById('prod-precio-orig').innerText = precio > 0 ? `$${precio.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No encontrado';
+      document.getElementById('prod-precio-promo').innerText = precio > 0 ? `$${precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No encontrado';
+      document.getElementById('fuente-info').innerText = fuente ? `Origen: ${fuente}` : '';
 
-        match = re.search(r'\$\s*([\d\.\,]+)', linea)
-        if match:
-            valor_str = match.group(1).replace('.', '').replace(',', '.')
-            try:
-                val = float(valor_str)
-                if val > 0:
-                    precio_num = val
-                    break
-            except ValueError:
-                continue
+      const badge = document.getElementById('badge');
+      const btnAgregar = document.getElementById('btn-agregar');
+      const manualBox = document.getElementById('manual-fallback');
 
-    if precio_num <= 0:
-        continue
+      if (precio > 0) {
+        btnAgregar.style.display = 'block';
+        manualBox.style.display = 'none';
+        reproducirSonidoPositivo();
 
-    catalogo_final.append({
-        "ean": str(item['ean']).strip(),
-        "nombre": nombre,
-        "precio": precio_num
-    })
+        if (aplica) {
+          badge.className = 'status-badge verde';
+          badge.innerText = `APLICA ${(DESCUENTO_ACTUAL * 100).toFixed(0)}% OFF`;
+        } else {
+          badge.className = 'status-badge rojo';
+          badge.innerText = esExcluido ? 'EXCLUIDO DE LA PROMO' : 'PRECIO LISTA';
+        }
+      } else {
+        btnAgregar.style.display = 'none';
+        manualBox.style.display = 'block';
+        badge.className = 'status-badge rojo';
+        badge.innerText = 'PRODUCTO SIN PRECIO';
+        reproducirSonidoNegativo();
+      }
+    }
 
-print(f"\n==========================================")
-print(f"TOTAL ARTÍCULOS PROCESADOS: {len(catalogo_final)}")
-print(f"==========================================")
+    async function consultarOpenFoodFacts(ean) {
+      try {
+        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${ean}.json`);
+        const data = await res.json();
+        if (data.status === 1 && data.product) {
+          const p = data.product;
+          return p.product_name_es || p.product_name || p.generic_name || null;
+        }
+      } catch (e) {
+        console.warn("Error Open Food Facts:", e);
+      }
+      return null;
+    }
 
-with open("productos.json", "w", encoding="utf-8") as f:
-    json.dump(catalogo_final, f, ensure_ascii=False, indent=2)
+    function buscarPrecioEnCatalogo(nombreBuscado) {
+      const palabras = normalizar(nombreBuscado).split(/\s+/).filter(w => w.length > 2);
+      if (palabras.length === 0) return null;
 
-print("Descargando productos.json...")
-files.download("productos.json")
+      let mejorMatch = null;
+      let maxCoincidencias = 0;
+
+      for (let item of catalogo) {
+        const nom = normalizar(item.nombre);
+        let coincidencias = 0;
+        for (let pal of palabras) {
+          if (nom.includes(pal)) coincidencias++;
+        }
+        if (coincidencias > maxCoincidencias) {
+          maxCoincidencias = coincidencias;
+          mejorMatch = item;
+        }
+      }
+      return maxCoincidencias >= 2 ? mejorMatch : null;
+    }
+
+    async function onScanSuccess(codigoLeido) {
+      // 1. Prioridad absoluta al catálogo oficial de Coto
+      const matchCoto = catalogo.find(p => (p.ean === codigoLeido || p.codigo === codigoLeido) && p.precio > 0);
+      if (matchCoto) {
+        mostrarProducto(matchCoto.nombre, matchCoto.precio, codigoLeido, "Catálogo Coto Oficial");
+        return;
+      }
+
+      // 2. Base Internacional GS1 y cruce automático con precio de Coto
+      document.getElementById('scan-result').style.display = 'block';
+      document.getElementById('prod-nombre').innerText = "Buscando en catálogo...";
+      document.getElementById('badge').className = 'status-badge amarillo';
+      document.getElementById('badge').innerText = 'IDENTIFICANDO...';
+
+      const nombreInternacional = await consultarOpenFoodFacts(codigoLeido);
+      if (nombreInternacional) {
+        const matchPrecio = buscarPrecioEnCatalogo(nombreInternacional);
+        if (matchPrecio && matchPrecio.precio > 0) {
+          mostrarProducto(matchPrecio.nombre, matchPrecio.precio, codigoLeido, "Coto (Cruce Automático)");
+          return;
+        }
+      }
+
+      // 3. Revisar memoria previa del teléfono
+      if (mapaMemoria[codigoLeido] && mapaMemoria[codigoLeido].precio > 0) {
+        const p = mapaMemoria[codigoLeido];
+        mostrarProducto(p.nombre, p.precio, codigoLeido, "Memoria guardada");
+        return;
+      }
+
+      mostrarProducto(nombreInternacional || `Artículo (${codigoLeido})`, 0.0, codigoLeido, "No encontrado");
+    }
+
+    function guardarPrecioManual() {
+      const val = parseFloat(document.getElementById('input-precio-manual').value);
+      if (val > 0 && ultimoEscaneado) {
+        mapaMemoria[ultimoEscaneado.codigo] = {
+          nombre: ultimoEscaneado.nombre,
+          precio: val
+        };
+        localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
+        mostrarProducto(ultimoEscaneado.nombre, val, ultimoEscaneado.codigo, "Ingreso manual");
+      }
+    }
+
+    document.getElementById('btn-agregar').addEventListener('click', () => {
+      if (ultimoEscaneado && ultimoEscaneado.precioLista > 0) {
+        changuito.push({...ultimoEscaneado});
+        actualizarTotales();
+        document.getElementById('scan-result').style.display = 'none';
+        ultimoEscaneado = null;
+      }
+    });
+
+    function borrarItem(index) {
+      changuito.splice(index, 1);
+      actualizarTotales();
+    }
+
+    function actualizarTotales() {
+      let subtotal = 0;
+      let pagar = 0;
+
+      changuito.forEach(item => {
+        subtotal += item.precioLista;
+        pagar += item.precioFinal;
+      });
+
+      let ahorro = subtotal - pagar;
+
+      document.getElementById('subtotal-gondola').innerText = `$${subtotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('total-ahorro').innerText = `-$${ahorro.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('total-pagar').innerText = `$${pagar.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+
+      const lista = document.getElementById('lista-changuito');
+      if (changuito.length === 0) {
+        lista.innerHTML = '<small style="color: #999;">Aún no agregaste productos.</small>';
+        return;
+      }
+
+      lista.innerHTML = changuito.map((i, idx) => `
+        <div class="item-fila">
+          <div style="flex: 1;">
+            <div>${i.nombre}</div>
+            <small style="color: ${i.aplicaPromo ? '#00873a' : '#e02424'}">${i.aplicaPromo ? 'Aplica promo' : 'Excluido'}</small>
+          </div>
+          <b style="margin: 0 8px;">$${i.precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</b>
+          <button class="btn-borrar" onclick="borrarItem(${idx})">X</button>
+        </div>
+      `).join('');
+    }
+
+    // Iniciar lector de código de barras
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 140 } },
+      onScanSuccess
+    ).catch(err => console.error("Error al iniciar cámara:", err));
+  </script>
+</body>
+</html>
