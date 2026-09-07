@@ -38,7 +38,7 @@
 
     /* Fila de precio editable */
     .fila-precio-editable { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #666; margin: 4px 0; }
-    .btn-editar-precio { background: #f0f2f5; border: 1px solid #ccd0d5; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: bold; cursor: pointer; color: #1877f2; }
+    .btn-editar-precio { background: #f0f2f5; border: 1px solid #ccd0d5; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: bold; cursor: pointer; color: #1877f2; }
 
     .resumen { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
     .total-final { font-size: 18px; font-weight: bold; color: #111; border-top: 1px dashed #ccc; padding-top: 8px; margin-top: 8px; }
@@ -49,6 +49,11 @@
     .manual-box { background: #fffbe6; border: 1px solid #ffe58f; padding: 12px; border-radius: 8px; margin-top: 10px; }
     .btn-compartir { width: 100%; background: #25d366; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: bold; margin-top: 10px; cursor: pointer; }
     .camara-pausada { opacity: 0.6; filter: grayscale(50%); transition: all 0.3s ease; }
+
+    /* Modal emergente para editar precio con teclado numérico */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 999; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+    .modal-box { background: #fff; border-radius: 14px; padding: 20px; width: 100%; max-width: 340px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    .input-precio-teclado { font-size: 26px; font-weight: bold; text-align: center; border: 2px solid #1877f2; border-radius: 10px; padding: 12px; margin: 14px 0; color: #111; }
   </style>
 </head>
 <body>
@@ -96,7 +101,7 @@
     <!-- Fila de Precio Góndola Editable -->
     <div class="fila-precio-editable">
       <span>Precio Góndola Unitario: <b id="prod-precio-orig"></b></span>
-      <button class="btn-editar-precio" onclick="editarPrecioGondola()">✏️ Corregir</button>
+      <button class="btn-editar-precio" onclick="abrirModalPrecio()">✏️ Corregir</button>
     </div>
 
     <div style="font-size: 15px; color: #111; margin-top: 2px;">Total c/u con promo: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
@@ -113,8 +118,7 @@
       <small style="color: #873800; font-weight: bold; display: block; margin-bottom: 6px;">
         Asignar precio manualmente si no figura en Coto:
       </small>
-      <input type="number" id="input-precio-manual" placeholder="Ej: 1110">
-      <button class="btn-add" style="background:#1890ff; padding:8px;" onclick="guardarPrecioManual()">Fijar Precio</button>
+      <button class="btn-add" style="background:#1890ff; padding:8px;" onclick="abrirModalPrecio()">Fijar Precio de Góndola</button>
     </div>
 
     <button class="btn-add" id="btn-agregar">✅ Agregar al Changuito</button>
@@ -137,6 +141,27 @@
     </div>
 
     <button class="btn-compartir" id="btn-compartir" style="display:none;" onclick="compartirResumen()">📲 Compartir resumen / WhatsApp</button>
+  </div>
+
+  <!-- MODAL PARA CORREGIR PRECIO CON TECLADO NUMÉRICO DIRECTO -->
+  <div id="modal-precio" class="modal-overlay">
+    <div class="modal-box">
+      <h4 style="margin: 0 0 6px 0; font-size: 16px; text-align: center;">Corregir Precio de Góndola</h4>
+      <p style="margin: 0; font-size: 12px; color: #666; text-align: center;">Ingresá el precio visible en góndola:</p>
+      
+      <!-- inputmode="decimal" y pattern activan teclado numérico directo en celular -->
+      <input 
+        type="number" 
+        step="0.01" 
+        inputmode="decimal" 
+        pattern="[0-9]*" 
+        id="modal-input-precio" 
+        class="input-precio-teclado" 
+        placeholder="0.00">
+      
+      <button class="btn-add" onclick="guardarPrecioDesdeModal()">Guardar Precio</button>
+      <button class="btn-cancel" onclick="cerrarModalPrecio()">Cancelar</button>
+    </div>
   </div>
 
   <script>
@@ -294,7 +319,6 @@
       document.getElementById('prod-precio-promo').innerText = precio > 0 ? `$${precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No encontrado';
       document.getElementById('fuente-info').innerText = fuente ? `Origen: ${fuente}` : '';
 
-      // Mostrar foto si existe
       const imgEl = document.getElementById('prod-img');
       const noImgEl = document.getElementById('prod-no-img');
       if (fotoUrl) {
@@ -331,28 +355,39 @@
       }
     }
 
-    function editarPrecioGondola() {
+    // Modal con teclado numérico
+    function abrirModalPrecio() {
       if (!ultimoEscaneado) return;
-      const precioActual = ultimoEscaneado.precioLista > 0 ? ultimoEscaneado.precioLista : '';
-      const nuevoPrecioStr = prompt("Ingresá el precio de góndola correcto:", precioActual);
-      
-      if (nuevoPrecioStr !== null) {
-        const nuevoPrecio = parseFloat(nuevoPrecioStr.replace(',', '.'));
-        if (!isNaN(nuevoPrecio) && nuevoPrecio > 0) {
-          mapaMemoria[ultimoEscaneado.codigo] = { 
-            nombre: ultimoEscaneado.nombre, 
-            precio: nuevoPrecio,
-            foto: ultimoEscaneado.foto 
-          };
-          localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
-          mostrarProducto(ultimoEscaneado.nombre, nuevoPrecio, ultimoEscaneado.codigo, "Precio corregido a mano", ultimoEscaneado.foto, false);
-        } else {
-          alert("Precio inválido. Debe ser un número mayor a 0.");
-        }
+      const modal = document.getElementById('modal-precio');
+      const input = document.getElementById('modal-input-precio');
+      input.value = ultimoEscaneado.precioLista > 0 ? ultimoEscaneado.precioLista : '';
+      modal.style.display = 'flex';
+      setTimeout(() => input.focus(), 150);
+    }
+
+    function cerrarModalPrecio() {
+      document.getElementById('modal-precio').style.display = 'none';
+    }
+
+    function guardarPrecioDesdeModal() {
+      const input = document.getElementById('modal-input-precio');
+      const nuevoPrecio = parseFloat(input.value.replace(',', '.'));
+
+      if (!isNaN(nuevoPrecio) && nuevoPrecio > 0) {
+        mapaMemoria[ultimoEscaneado.codigo] = { 
+          nombre: ultimoEscaneado.nombre, 
+          precio: nuevoPrecio,
+          foto: ultimoEscaneado.foto 
+        };
+        localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
+        
+        cerrarModalPrecio();
+        mostrarProducto(ultimoEscaneado.nombre, nuevoPrecio, ultimoEscaneado.codigo, "Precio corregido", ultimoEscaneado.foto, false);
+      } else {
+        alert("Por favor ingresá un número mayor a 0.");
       }
     }
 
-    // Consulta en vivo a Open Food Facts extrayendo NOMBRE + FOTO
     async function consultarOpenFoodFacts(ean) {
       try {
         const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${ean}.json`);
@@ -397,7 +432,6 @@
       if (escaneoEnPausa) return;
       pausarEscaneo();
 
-      // Consultar siempre la Base Internacional para obtener Foto y Marca oficial
       document.getElementById('scan-result').style.display = 'block';
       document.getElementById('prod-nombre').innerText = "Identificando en base universal...";
       document.getElementById('badge').className = 'status-badge amarillo';
@@ -405,9 +439,7 @@
 
       const infoInternacional = await consultarOpenFoodFacts(codigoLeido);
 
-      // 1. Si existe en la base internacional, mostramos su nombre y su foto oficial
       if (infoInternacional && infoInternacional.nombre) {
-        // Buscamos el precio en Coto (por EAN directo o por cruce del nombre)
         let matchCoto = catalogo.find(p => p.ean === codigoLeido && p.precio > 0);
         if (!matchCoto) {
           matchCoto = buscarPrecioEnCatalogo(infoInternacional.nombre);
@@ -426,14 +458,12 @@
         return;
       }
 
-      // 2. Si no está en Open Food Facts, buscar directo en catálogo Coto
       const matchCotoDirecto = catalogo.find(p => (p.ean === codigoLeido || p.codigo === codigoLeido) && p.precio > 0);
       if (matchCotoDirecto) {
         mostrarProducto(matchCotoDirecto.nombre, matchCotoDirecto.precio, codigoLeido, "Catálogo Coto Oficial", "");
         return;
       }
 
-      // 3. Memoria manual guardada en el celular
       if (mapaMemoria[codigoLeido] && mapaMemoria[codigoLeido].precio > 0) {
         const p = mapaMemoria[codigoLeido];
         mostrarProducto(p.nombre, p.precio, codigoLeido, "Memoria guardada", p.foto || "");
@@ -441,19 +471,6 @@
       }
 
       mostrarProducto(`Artículo (${codigoLeido})`, 0.0, codigoLeido, "No encontrado", "");
-    }
-
-    function guardarPrecioManual() {
-      const val = parseFloat(document.getElementById('input-precio-manual').value);
-      if (val > 0 && ultimoEscaneado) {
-        mapaMemoria[ultimoEscaneado.codigo] = { 
-          nombre: ultimoEscaneado.nombre, 
-          precio: val,
-          foto: ultimoEscaneado.foto 
-        };
-        localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
-        mostrarProducto(ultimoEscaneado.nombre, val, ultimoEscaneado.codigo, "Ingreso manual", ultimoEscaneado.foto);
-      }
     }
 
     document.getElementById('btn-agregar').addEventListener('click', () => {
