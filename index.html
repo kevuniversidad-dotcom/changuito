@@ -50,7 +50,7 @@
     .btn-compartir { width: 100%; background: #25d366; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: bold; margin-top: 10px; cursor: pointer; }
     .camara-pausada { opacity: 0.6; filter: grayscale(50%); transition: all 0.3s ease; }
 
-    /* Modal emergente para editar precio con teclado numérico */
+    /* Modal con teclado numérico */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 999; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
     .modal-box { background: #fff; border-radius: 14px; padding: 20px; width: 100%; max-width: 340px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
     .input-precio-teclado { font-size: 26px; font-weight: bold; text-align: center; border: 2px solid #1877f2; border-radius: 10px; padding: 12px; margin: 14px 0; color: #111; }
@@ -58,7 +58,6 @@
 </head>
 <body>
 
-  <!-- Cabecera Oficial Coto -->
   <div class="header-coto">
     <div class="logo-container">
       <div class="coto-badge-logo">COTO</div>
@@ -70,7 +69,6 @@
     <button style="background:none; border:none; color:#d93025; font-size:11px; font-weight:bold; cursor:pointer;" onclick="vaciarMemoria()">Resetear</button>
   </div>
 
-  <!-- Selector de Beneficio Bancario -->
   <div class="card" style="margin-top: 0;">
     <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">BENEFICIO BANCARIO:</label>
     <select id="select-promo" onchange="cambiarPromo()">
@@ -81,14 +79,11 @@
     </select>
   </div>
 
-  <!-- Escáner Cámara -->
   <div id="reader"></div>
 
-  <!-- Tarjeta con Información y Foto de Verificación -->
   <div class="card" id="scan-result" style="display: none;">
     <span id="badge" class="status-badge"></span>
 
-    <!-- Bloque de Verificación Visual: Foto + Nombre en Negrita -->
     <div class="prod-header-box">
       <img id="prod-img" class="prod-thumb" src="" alt="Foto Producto" style="display: none;">
       <div id="prod-no-img" class="prod-thumb-placeholder">📦</div>
@@ -98,15 +93,15 @@
       </div>
     </div>
     
-    <!-- Fila de Precio Góndola Editable -->
     <div class="fila-precio-editable">
       <span>Precio Góndola Unitario: <b id="prod-precio-orig"></b></span>
       <button class="btn-editar-precio" onclick="abrirModalPrecio()">✏️ Corregir</button>
     </div>
 
-    <div style="font-size: 15px; color: #111; margin-top: 2px;">Total c/u con promo: <b id="prod-precio-promo" style="color:#00873a;"></b></div>
+    <div style="font-size: 15px; color: #111; margin-top: 2px;">
+      Total c/u con promo: <b id="prod-precio-promo" style="color:#00873a;"></b>
+    </div>
 
-    <!-- Multiplicador de Unidades -->
     <div class="selector-cantidad">
       <button class="btn-qty" onclick="ajustarCantidad(-1)">-</button>
       <span class="qty-numero" id="cant-display">1</span>
@@ -116,7 +111,7 @@
     
     <div id="manual-fallback" class="manual-box" style="display: none;">
       <small style="color: #873800; font-weight: bold; display: block; margin-bottom: 6px;">
-        Asignar precio manualmente si no figura en Coto:
+        Asignar precio manualmente si no figura en el catálogo:
       </small>
       <button class="btn-add" style="background:#1890ff; padding:8px;" onclick="abrirModalPrecio()">Fijar Precio de Góndola</button>
     </div>
@@ -125,7 +120,6 @@
     <button class="btn-cancel" onclick="reanudarEscaneo()">🔄 Escanear otro producto</button>
   </div>
 
-  <!-- Changuito Acumulado -->
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <h3 style="margin: 0; font-size: 16px;">Mi Changuito</h3>
@@ -143,11 +137,10 @@
     <button class="btn-compartir" id="btn-compartir" style="display:none;" onclick="compartirResumen()">📲 Compartir resumen / WhatsApp</button>
   </div>
 
-  <!-- MODAL CON TECLADO NUMÉRICO DIRECTO -->
   <div id="modal-precio" class="modal-overlay">
     <div class="modal-box">
       <h4 style="margin: 0 0 6px 0; font-size: 16px; text-align: center;">Corregir Precio de Góndola</h4>
-      <p style="margin: 0; font-size: 12px; color: #666; text-align: center;">Ingresá el precio visible en góndola:</p>
+      <p style="margin: 0; font-size: 12px; color: #666; text-align: center;">Ingresá el valor que figura en góndola:</p>
       
       <input 
         type="number" 
@@ -176,7 +169,7 @@
     let mapaMemoria = JSON.parse(localStorage.getItem('changuito_ean_map') || '{}');
 
     // ==========================================
-    // SONIDO Y VIBRACIÓN HÁPTICA
+    // AUDIO Y FEEDBACK HÁPTICO
     // ==========================================
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
@@ -226,7 +219,7 @@
       if (navigator.vibrate) navigator.vibrate([60, 50, 60]);
     }
 
-    // Cargar catálogo de Coto
+    // Carga de catálogo
     fetch('productos.json')
       .then(r => r.json())
       .then(data => {
@@ -264,13 +257,15 @@
       return (texto || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     }
 
+    // Exclusiones bancarias oficiales (incluye aceites, harinas, azúcares, gaseosas, bebidas alcohólicas)
     function evaluarExclusion(nombre) {
       const nom = normalizar(nombre);
       const vetados = [
+        "aceite", "harina", "azucar", "azúcar",
         "fernet", "branca", "aperitivo", "gancia", "campari", "whisky", "vodka", "gin",
         "catena", "rutini", "chandon", "luigi bosca", "trumpeter", "bianchi", "enemigo",
         "bodega", "espumante", "champagne", "licor", "coca-cola", "sprite", "fanta",
-        "aquarius", "schweppes", "monster", "cepita", "ades", "harina", "azucar", "aceite"
+        "aquarius", "schweppes", "monster", "cepita", "ades"
       ];
       return vetados.some(v => nom.includes(v));
     }
@@ -314,8 +309,8 @@
 
       document.getElementById('scan-result').style.display = 'block';
       document.getElementById('prod-nombre').innerText = nombre;
-      document.getElementById('prod-precio-orig').innerText = precio > 0 ? `$${precio.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No encontrado';
-      document.getElementById('prod-precio-promo').innerText = precio > 0 ? `$${precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No encontrado';
+      document.getElementById('prod-precio-orig').innerText = precio > 0 ? `$${precio.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No fijado';
+      document.getElementById('prod-precio-promo').innerText = precio > 0 ? `$${precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}` : 'No fijado';
       document.getElementById('fuente-info').innerText = fuente ? `Origen: ${fuente}` : '';
 
       const imgEl = document.getElementById('prod-img');
@@ -333,23 +328,30 @@
       const btnAgregar = document.getElementById('btn-agregar');
       const manualBox = document.getElementById('manual-fallback');
 
+      // Estado del Badge de la Promoción
+      if (esExcluido) {
+        badge.className = 'status-badge rojo';
+        badge.innerText = 'EXCLUIDO DE LA PROMO';
+      } else if (aplica) {
+        badge.className = 'status-badge verde';
+        badge.innerText = `APLICA ${(DESCUENTO_ACTUAL * 100).toFixed(0)}% OFF`;
+      } else {
+        badge.className = 'status-badge rojo';
+        badge.innerText = 'PRECIO LISTA (SIN BENEFICIO)';
+      }
+
       if (precio > 0) {
         btnAgregar.style.display = 'block';
         manualBox.style.display = 'none';
-        if (reproducirAudio) reproducirSonivoPositivo();
-
-        if (aplica) {
-          badge.className = 'status-badge verde';
-          badge.innerText = `APLICA ${(DESCUENTO_ACTUAL * 100).toFixed(0)}% OFF`;
-        } else {
-          badge.className = 'status-badge rojo';
-          badge.innerText = esExcluido ? 'EXCLUIDO DE LA PROMO' : 'PRECIO LISTA';
+        if (reproducirAudio) {
+          if (aplica) reproducirSonidoPositivo();
+          else reproducirSonidoNegativo();
         }
       } else {
+        // No tiene precio cargado en la base
         btnAgregar.style.display = 'none';
         manualBox.style.display = 'block';
-        badge.className = 'status-badge rojo';
-        badge.innerText = 'PRODUCTO SIN PRECIO';
+        badge.innerText += ' - SIN PRECIO';
         if (reproducirAudio) reproducirSonidoNegativo();
       }
     }
@@ -380,17 +382,22 @@
         localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
         
         cerrarModalPrecio();
-        mostrarProducto(ultimoEscaneado.nombre, nuevoPrecio, ultimoEscaneado.codigo, "Precio corregido", ultimoEscaneado.foto, false);
+        mostrarProducto(ultimoEscaneado.nombre, nuevoPrecio, ultimoEscaneado.codigo, "Precio guardado", ultimoEscaneado.foto, false);
       } else {
-        alert("Por favor ingresá un número mayor a 0.");
+        alert("Por favor ingresá un precio válido mayor a 0.");
       }
     }
 
-    async function consultarOpenFoodFacts(ean) {
+    // Consulta con Timeout de 1.2 segundos para que no se quede colgado
+    async function consultarOpenFoodFactsConTimeout(ean) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1200);
+
       try {
-        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${ean}.json`);
+        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${ean}.json`, { signal: controller.signal });
+        clearTimeout(timeoutId);
         const data = await res.json();
-        if (data.status === 1 && data.product) {
+        if (data && data.status === 1 && data.product) {
           const p = data.product;
           const nombre = p.product_name_es || p.product_name || p.generic_name || '';
           const marca = p.brands ? `${p.brands} ` : '';
@@ -400,7 +407,7 @@
           return { nombre: nombreCompleto.trim(), foto: foto };
         }
       } catch (e) {
-        console.warn("Error Open Food Facts:", e);
+        // Si tarda o falla el fetch, aborta silenciosamente
       }
       return null;
     }
@@ -430,19 +437,25 @@
       if (escaneoEnPausa) return;
       pausarEscaneo();
 
-      document.getElementById('scan-result').style.display = 'block';
-      document.getElementById('prod-nombre').innerText = "Identificando en base universal...";
-      document.getElementById('badge').className = 'status-badge amarillo';
-      document.getElementById('badge').innerText = 'BUSCANDO FOTO...';
+      // 1. Revisar si ya está en la memoria del celular
+      if (mapaMemoria[codigoLeido] && mapaMemoria[codigoLeido].precio > 0) {
+        const p = mapaMemoria[codigoLeido];
+        mostrarProducto(p.nombre, p.precio, codigoLeido, "Memoria guardada", p.foto || "");
+        return;
+      }
 
-      const infoInternacional = await consultarOpenFoodFacts(codigoLeido);
+      // 2. Revisar si está en el catálogo local de Coto por EAN directo
+      const matchCotoDirecto = catalogo.find(p => (p.ean === codigoLeido || p.codigo === codigoLeido));
+      if (matchCotoDirecto) {
+        mostrarProducto(matchCotoDirecto.nombre, matchCotoDirecto.precio || 0, codigoLeido, "Catálogo Coto", "");
+        return;
+      }
+
+      // 3. Buscar en base universal con timeout rápido
+      const infoInternacional = await consultarOpenFoodFactsConTimeout(codigoLeido);
 
       if (infoInternacional && infoInternacional.nombre) {
-        let matchCoto = catalogo.find(p => p.ean === codigoLeido && p.precio > 0);
-        if (!matchCoto) {
-          matchCoto = buscarPrecioEnCatalogo(infoInternacional.nombre);
-        }
-
+        let matchCoto = buscarPrecioEnCatalogo(infoInternacional.nombre);
         const precio = matchCoto ? matchCoto.precio : 0.0;
         
         mapaMemoria[codigoLeido] = { 
@@ -452,23 +465,12 @@
         };
         localStorage.setItem('changuito_ean_map', JSON.stringify(mapaMemoria));
 
-        mostrarProducto(infoInternacional.nombre, precio, codigoLeido, matchCoto ? "Open Food Facts + Coto" : "Open Food Facts", infoInternacional.foto);
+        mostrarProducto(infoInternacional.nombre, precio, codigoLeido, matchCoto ? "Coto + Foto" : "Open Food Facts", infoInternacional.foto);
         return;
       }
 
-      const matchCotoDirecto = catalogo.find(p => (p.ean === codigoLeido || p.codigo === codigoLeido) && p.precio > 0);
-      if (matchCotoDirecto) {
-        mostrarProducto(matchCotoDirecto.nombre, matchCotoDirecto.precio, codigoLeido, "Catálogo Coto Oficial", "");
-        return;
-      }
-
-      if (mapaMemoria[codigoLeido] && mapaMemoria[codigoLeido].precio > 0) {
-        const p = mapaMemoria[codigoLeido];
-        mostrarProducto(p.nombre, p.precio, codigoLeido, "Memoria guardada", p.foto || "");
-        return;
-      }
-
-      mostrarProducto(`Artículo (${codigoLeido})`, 0.0, codigoLeido, "No encontrado", "");
+      // 4. Si no se encontró en ninguna base, solicitar precio de inmediato
+      mostrarProducto(`Artículo (${codigoLeido})`, 0.0, codigoLeido, "Código sin registrar", "");
     }
 
     document.getElementById('btn-agregar').addEventListener('click', () => {
