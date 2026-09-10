@@ -20,6 +20,7 @@
     .verde { background: #e6f7ec; color: #00873a; border: 1px solid #a3e6b9; }
     .rojo { background: #fde8e8; color: #e02424; border: 1px solid #f8b4b4; }
     .amarillo { background: #fffbe6; color: #d48806; border: 1px solid #ffe58f; }
+    .naranja { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
     
     /* Tarjeta con foto de verificación visual */
     .prod-header-box { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
@@ -27,6 +28,13 @@
     .prod-thumb-placeholder { width: 68px; height: 68px; border-radius: 8px; background: #f0f2f5; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #999; flex-shrink: 0; border: 1px solid #e1e4e8; }
     .prod-info-col { flex: 1; }
     .prod-titulo { margin: 0 0 4px 0; font-size: 16px; font-weight: bold; color: #111; line-height: 1.25; }
+
+    /* Interruptor interactivo de oferta en góndola */
+    .oferta-switch-box { display: flex; align-items: center; justify-content: space-between; background: #fff7e6; border: 1px solid #ffd591; padding: 8px 12px; border-radius: 8px; margin: 8px 0; }
+    .oferta-switch-txt { font-size: 12px; font-weight: bold; color: #873800; }
+    .btn-toggle-oferta { border: none; border-radius: 20px; padding: 5px 14px; font-size: 12px; font-weight: bold; cursor: pointer; transition: all 0.2s ease; }
+    .toggle-no { background: #e4e6eb; color: #4b4f56; }
+    .toggle-si { background: #fa8c16; color: white; }
 
     .btn-add { width: 100%; background: #00873a; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 10px; cursor: pointer; }
     .btn-cancel { width: 100%; background: #e4e6eb; color: #333; border: none; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: bold; margin-top: 6px; cursor: pointer; }
@@ -88,7 +96,7 @@
     <div>
       <label style="font-size: 11px; font-weight: bold; color: #666; display: block; margin-bottom: 4px;">💳 BENEFICIO BANCARIO:</label>
       <select id="select-promo" onchange="cambiarPromo()">
-        <!-- Se rellena automáticamente según el día elegido -->
+        <!-- Se rellena dinámicamente -->
       </select>
     </div>
   </div>
@@ -109,6 +117,12 @@
         <div id="fuente-info" style="font-size: 11px; color: #888;"></div>
       </div>
     </div>
+
+    <!-- Interruptor para ofertas existentes en góndola (Opción 2) -->
+    <div class="oferta-switch-box">
+      <span class="oferta-switch-txt">🏷️ ¿Tiene cartel de oferta física?</span>
+      <button id="btn-toggle-oferta" class="btn-toggle-oferta toggle-no" onclick="toggleOfertaGondola()">NO</button>
+    </div>
     
     <!-- Fila de Precio Góndola Editable -->
     <div class="fila-precio-editable">
@@ -117,7 +131,7 @@
     </div>
 
     <div style="font-size: 15px; color: #111; margin-top: 2px;">
-      Total c/u con promo: <b id="prod-precio-promo" style="color:#00873a;"></b>
+      Total c/u final: <b id="prod-precio-promo" style="color:#00873a;"></b>
     </div>
 
     <!-- Multiplicador de Unidades -->
@@ -183,6 +197,7 @@
     let ultimoEscaneado = null;
     let cantidadSeleccionada = 1;
     let escaneoEnPausa = false;
+    let tieneOfertaGondola = false; // Estado del toggle
 
     // BASE DE PROMOCIONES POR DÍA OFICIAL DE COTO
     const PROMOS_DATA = {
@@ -236,9 +251,8 @@
     let DESCUENTO_ACTUAL = 0.30;
     let mapaMemoria = JSON.parse(localStorage.getItem('changuito_ean_map') || '{}');
 
-    // Inicializar día y selector
     function inicializarDiaActual() {
-      const diaNum = new Date().getDay(); // 0 = Domingo, 1 = Lunes, etc.
+      const diaNum = new Date().getDay();
       const mapaDias = {
         0: 'finde',
         1: 'lunes',
@@ -317,7 +331,6 @@
       if (navigator.vibrate) navigator.vibrate([60, 50, 60]);
     }
 
-    // Carga de catálogo Coto
     fetch('productos.json')
       .then(r => r.json())
       .then(data => {
@@ -340,8 +353,14 @@
       DESCUENTO_ACTUAL = parseFloat(document.getElementById('select-promo').value);
       
       changuito.forEach(item => {
-        item.aplicaPromo = !item.excluido && DESCUENTO_ACTUAL > 0;
-        item.precioFinal = item.aplicaPromo ? item.precioLista * (1 - DESCUENTO_ACTUAL) : item.precioLista;
+        // Los que ya tienen oferta de góndola no acumulan promo bancaria
+        if (item.ofertaPrevia) {
+          item.aplicaPromo = false;
+          item.precioFinal = item.precioLista;
+        } else {
+          item.aplicaPromo = !item.excluido && DESCUENTO_ACTUAL > 0;
+          item.precioFinal = item.aplicaPromo ? item.precioLista * (1 - DESCUENTO_ACTUAL) : item.precioLista;
+        }
       });
 
       actualizarTotales();
@@ -359,33 +378,28 @@
     function evaluarExclusion(nombre) {
       const nom = normalizar(nombre);
 
-      // 1. Aceites: Girasol y Mezcla excluidos (Oliva permitido)
       if (nom.includes("aceite")) {
         if (nom.includes("girasol") || nom.includes("mezcla") || nom.includes("soja") || (!nom.includes("oliva") && !nom.includes("coco") && !nom.includes("uva"))) {
           return true;
         }
       }
 
-      // 2. Canasta básica, carnicería y frescos
       const canastaExcluida = [
         "harina", "azucar", "azúcar",
         "novillo", "novillito", "ternera", "menudencia", "pollo entero", "pollo trozado"
       ];
       if (canastaExcluida.some(v => nom.includes(v))) return true;
 
-      // Leches infantiles
       if (nom.includes("infantil") && (nom.includes("etapa 1") || nom.includes("etapa 2") || nom.includes("etapa 1y2"))) {
         return true;
       }
 
-      // 3. Línea Coca-Cola Company
       const lineaCoca = [
         "coca-cola", "coca cola", "sprite", "fanta", "schweppes", "crush",
         "aquarius", "smartwater", "cepita", "benedictino", "powerade", "ades", "hi-c", "monster"
       ];
       if (lineaCoca.some(v => nom.includes(v))) return true;
 
-      // 4. Bodegas y vinos premium
       const bodegasExcluidas = [
         "catena zapata", "nicola catena", "ernesto catena", "alma negra", "padrillos", "animal", "enemigo", "gran enemigo",
         "dv catena", "saint felicien", "nicasia", "tilia", "luigi bosca", "leoncio arizu",
@@ -396,7 +410,6 @@
       ];
       if (bodegasExcluidas.some(v => nom.includes(v))) return true;
 
-      // 5. Destilados y espumantes
       const destiladosExcluidos = [
         "mercier", "baron b", "barón b", "dom perignon", "pommery", "moet chandon", "möet chandon", "la grande dame", "krug",
         "fernet", "branca", "campari", "gancia", "whisky", "vodka", "gin", "licor", "johnnie walker"
@@ -416,8 +429,10 @@
       document.getElementById('scan-result').style.display = 'none';
       ultimoEscaneado = null;
       cantidadSeleccionada = 1;
+      tieneOfertaGondola = false;
       document.getElementById('cant-display').innerText = '1';
       document.getElementById('reader').classList.remove('camara-pausada');
+      actualizarBotonToggleUI();
       try { html5QrCode.resume(); } catch(e) {}
       escaneoEnPausa = false;
     }
@@ -427,11 +442,33 @@
       document.getElementById('cant-display').innerText = cantidadSeleccionada;
     }
 
-    // MOSTRAR PRODUCTO CON EVALUACIÓN DE PROMO INDEPENDIENTE DEL PRECIO
+    // Toggle de oferta en góndola
+    function toggleOfertaGondola() {
+      tieneOfertaGondola = !tieneOfertaGondola;
+      actualizarBotonToggleUI();
+      if (ultimoEscaneado) {
+        mostrarProducto(ultimoEscaneado.nombre, ultimoEscaneado.precioLista, ultimoEscaneado.codigo, ultimoEscaneado.fuente, ultimoEscaneado.foto, false);
+      }
+    }
+
+    function actualizarBotonToggleUI() {
+      const btn = document.getElementById('btn-toggle-oferta');
+      if (tieneOfertaGondola) {
+        btn.innerText = "SÍ";
+        btn.className = "btn-toggle-oferta toggle-si";
+      } else {
+        btn.innerText = "NO";
+        btn.className = "btn-toggle-oferta toggle-no";
+      }
+    }
+
+    // MOSTRAR PRODUCTO CON SOPORTE PARA OFERTA EN GÓNDOLA Y EVALUACIÓN DIRECTA
     function mostrarProducto(nombre, precio, codigo, fuente = "", fotoUrl = "", reproducirAudio = true) {
       const esExcluido = evaluarExclusion(nombre);
       const tienePromoActiva = DESCUENTO_ACTUAL > 0;
-      const aplica = !esExcluido && tienePromoActiva;
+      
+      // Si el cliente marcó que ya tiene oferta física, no acumula descuento bancario
+      const aplica = !esExcluido && tienePromoActiva && !tieneOfertaGondola;
       const precioFinal = (aplica && precio > 0) ? precio * (1 - DESCUENTO_ACTUAL) : precio;
 
       ultimoEscaneado = {
@@ -441,6 +478,7 @@
         precioFinal: precioFinal,
         excluido: esExcluido,
         aplicaPromo: aplica,
+        ofertaPrevia: tieneOfertaGondola,
         fuente: fuente,
         foto: fotoUrl
       };
@@ -466,8 +504,11 @@
       const btnAgregar = document.getElementById('btn-agregar');
       const manualBox = document.getElementById('manual-fallback');
 
-      // 1. Evaluación del estado de la promo (se muestra verde incluso si precio = 0)
-      if (esExcluido) {
+      // 1. Evaluación del Badge
+      if (tieneOfertaGondola) {
+        badge.className = 'status-badge naranja';
+        badge.innerText = 'EN OFERTA DE GÓNDOLA (NO ACUMULA BANCO)';
+      } else if (esExcluido) {
         badge.className = 'status-badge rojo';
         badge.innerText = 'EXCLUIDO DE LA PROMO';
       } else if (aplica) {
@@ -483,7 +524,7 @@
         btnAgregar.style.display = 'block';
         manualBox.style.display = 'none';
         if (reproducirAudio) {
-          if (aplica) reproducirSonidoPositivo();
+          if (aplica || tieneOfertaGondola) reproducirSonidoPositivo();
           else reproducirSonidoNegativo();
         }
       } else {
@@ -570,6 +611,8 @@
     async function onScanSuccess(codigoLeido) {
       if (escaneoEnPausa) return;
       pausarEscaneo();
+      tieneOfertaGondola = false;
+      actualizarBotonToggleUI();
 
       // 1. Memoria previa del celular
       if (mapaMemoria[codigoLeido] && mapaMemoria[codigoLeido].precio > 0) {
@@ -609,7 +652,7 @@
 
     document.getElementById('btn-agregar').addEventListener('click', () => {
       if (ultimoEscaneado && ultimoEscaneado.precioLista > 0) {
-        const indexExistente = changuito.findIndex(i => i.codigo === ultimoEscaneado.codigo);
+        const indexExistente = changuito.findIndex(i => i.codigo === ultimoEscaneado.codigo && i.ofertaPrevia === ultimoEscaneado.ofertaPrevia);
 
         if (indexExistente !== -1) {
           changuito[indexExistente].cantidad += cantidadSeleccionada;
@@ -662,18 +705,25 @@
         const totalFilaLista = i.precioLista * i.cantidad;
         const totalFilaFinal = i.precioFinal * i.cantidad;
 
+        let etiquetaSub = '';
+        if (i.ofertaPrevia) {
+          etiquetaSub = `<small style="color: #fa8c16; font-weight: bold;">Oferta en góndola</small>`;
+        } else if (i.aplicaPromo) {
+          etiquetaSub = `<small style="color: #00873a;">Aplica promo ($${i.precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})} c/u)</small>`;
+        } else {
+          etiquetaSub = `<small style="color: #e02424;">Excluido</small>`;
+        }
+
         return `
           <div class="item-fila">
             <div style="flex: 1;">
               <div><b>${i.nombre}</b> <span style="color:#1877f2; font-weight:bold;">x ${i.cantidad} u.</span></div>
-              <small style="color: ${i.aplicaPromo ? '#00873a' : '#e02424'}">
-                ${i.aplicaPromo ? 'Aplica promo' : 'Excluido'} ($${i.precioFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})} c/u)
-              </small>
+              ${etiquetaSub}
             </div>
 
             <div style="text-align: right; margin: 0 8px;">
-              ${i.aplicaPromo ? `<div style="font-size: 11px; color: #888; text-decoration: line-through;">$${totalFilaLista.toLocaleString('es-AR', {minimumFractionDigits: 2})}</div>` : ''}
-              <b style="font-size: 14px; color: ${i.aplicaPromo ? '#00873a' : '#111'};">
+              ${(i.aplicaPromo && !i.ofertaPrevia) ? `<div style="font-size: 11px; color: #888; text-decoration: line-through;">$${totalFilaLista.toLocaleString('es-AR', {minimumFractionDigits: 2})}</div>` : ''}
+              <b style="font-size: 14px; color: ${i.ofertaPrevia ? '#fa8c16' : (i.aplicaPromo ? '#00873a' : '#111')};">
                 $${totalFilaFinal.toLocaleString('es-AR', {minimumFractionDigits: 2})}
               </b>
             </div>
@@ -688,7 +738,7 @@
       if (changuito.length === 0) return;
       let texto = `🛒 *Mi Changuito Coto*\n`;
       changuito.forEach((item) => {
-        texto += `• ${item.nombre} x ${item.cantidad} u. = $${(item.precioFinal * item.cantidad).toFixed(2)}\n`;
+        texto += `• ${item.nombre} x ${item.cantidad} u. = $${(item.precioFinal * item.cantidad).toFixed(2)}${item.ofertaPrevia ? ' (Oferta Góndola)' : ''}\n`;
       });
       texto += `\n*Subtotal Góndola:* ${document.getElementById('subtotal-gondola').innerText}`;
       texto += `\n*Ahorro Total:* ${document.getElementById('total-ahorro').innerText}`;
